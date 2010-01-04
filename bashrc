@@ -163,7 +163,7 @@ Darwin)
 	export GIT_RAILS_PLUGINS_SVN_PATH
 	# If /Volumes exists then add it to the CDPATH to make navigating easier
 	if [ -d /Volumes ]; then
-	    export CDPATH="$CDPATH:/Volumes"
+	    CDPATH="$CDPATH:/Volumes"
 	fi
 	;;
 Linux)
@@ -175,7 +175,7 @@ Linux)
 	alias open='gnome-open 2> /dev/null'
 	# If /media exists then add it to the CDPATH to make navigating easier
 	if [ -d /media ]; then
-	    export CDPATH="$CDPATH:/media"
+	    CDPATH="$CDPATH:/media"
 	fi
 	# Set the terminal title to user@host:dir (RAILS_ENV) (Git Branch)
 	PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD}${RAILS_ENV:+ (RAILS_ENV=$RAILS_ENV)} $(parse_git_branch)\007"'
