@@ -1,0 +1,8 @@
+-l=115  #maximum-line-length=115
+-pt=0   #--paren-tightness=0
+-ce     #--cuddled-else
+-bar    #--opening-brace-always-on-right-bar (keep the brace on the right)
+-nsbl   #not(--opening-sub-brace-on-new-line)
+-otr    #--opening-token-right
+-sot    #--stack-opening-token
+-sct    #--stack-closing-token
