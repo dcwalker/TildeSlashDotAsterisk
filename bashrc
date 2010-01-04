@@ -74,15 +74,6 @@ LIGHTBLUE="\[\033[01;36m\]"
 # user at host (green) collen (white) present working directory (blue) RAILS_ENV value [if available] (light blue) current Git branch (yellow) dollar sign (white) single space
 PS1="$GREEN\u@\h$WHITE:$BLUE\w $LIGHTBLUE\${RAILS_ENV:+(RAILS_ENV=\$RAILS_ENV) }$YELLOW\$(parse_git_branch)$WHITE\$ "
 
-# If this is an xterm set the title to user@host:dir
-case "$TERM" in
-xterm*|rxvt*)
-    PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD}${RAILS_ENV:+ (RAILS_ENV=$RAILS_ENV)} $(parse_git_branch)\007"'
-    ;;
-*)
-    ;;
-esac
-
 
 ###
 # Set PATH
@@ -175,6 +166,8 @@ Linux)
 	if [ -d /media ]; then
 	    export CDPATH="$CDPATH:/media"
 	fi
+	# Set the terminal title to user@host:dir (RAILS_ENV) (Git Branch)
+	PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD}${RAILS_ENV:+ (RAILS_ENV=$RAILS_ENV)} $(parse_git_branch)\007"'
 	;;
 *)
 	# A place for non-Darwin/non-Linux configurations
