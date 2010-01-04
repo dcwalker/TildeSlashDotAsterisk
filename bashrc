@@ -71,7 +71,7 @@ WHITE="\[\033[00m\]"
 BLUE="\[\033[01;34m\]"
 LIGHTBLUE="\[\033[01;36m\]"
 
-# user at host (green) collen (white) present working directory (blue) RAILS_ENV value [if available] (light blue) current Git branch (yellow) dollar sign (white) single space
+# user at host (green) colon (white) present working directory (blue) RAILS_ENV value [if available] (light blue) current Git branch (yellow) dollar sign (white) single space
 PS1="$GREEN\u@\h$WHITE:$BLUE\w $LIGHTBLUE\${RAILS_ENV:+(RAILS_ENV=\$RAILS_ENV) }$YELLOW\$(parse_git_branch)$WHITE\$ "
 
 
@@ -95,6 +95,17 @@ fi
 if [ -d ~/bin ]; then
     PATH="~/bin:$PATH"
 fi
+
+# Look for directories in home that have a bin directory,
+# if found then add the directory to the front of PATH.
+# This allows you to build your own versions and keep them organized.
+# ex: If you have gnutar compiled and the binary in ~/gnutar/bin then
+#     this will find it and put at the front of your path so it
+#     overrides the system version.
+for directory in ~/*/bin
+do
+	PATH="${directory}:$PATH"
+done
 
 export PATH
 
