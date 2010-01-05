@@ -85,6 +85,10 @@ fi
 if [ -d /opt/local/bin ]; then
 	PATH="$PATH:/opt/local/bin"
 fi
+for directory in /usr/local/*/bin
+do
+	PATH="$PATH:${directory}"
+done
 
 # Ruby specific bin
 if [ -d /var/lib/gems/1.8/bin ]; then
