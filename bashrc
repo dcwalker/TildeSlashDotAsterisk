@@ -31,20 +31,6 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-###
-# Alias definitions
-
-# Who wouldn't want "human readable"
-alias ls='ls -h'
-
-# For my co-workers who are addicted to 'll'
-alias ll='ls -l'
-
-# Alias mysql to a mysql that includes the defaults-group-suffix option
-# This allows for groups in the .my.cnf file to specify host/user/password options
-# based on the RAILS_ENV thats set.
-alias mysql='mysql --defaults-group-suffix=_$RAILS_ENV'
-
 
 # Ignore duplicate lines in bash history
 HISTCONTROL=ignoredups
@@ -188,3 +174,18 @@ Linux)
 	# A place for non-Darwin/non-Linux configurations
     ;;
 esac
+
+
+###
+# Alias definitions
+
+# Who wouldn't want "human readable"
+alias ls='ls -h'
+
+# For my co-workers who are addicted to 'll'
+alias ll='ls -l'
+
+# Alias mysql to a mysql that includes the defaults-group-suffix option
+# This allows for groups in the .my.cnf file to specify host/user/password options
+# based on the RAILS_ENV thats set.
+alias mysql='mysql --defaults-group-suffix=_$RAILS_ENV'
