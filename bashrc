@@ -80,6 +80,9 @@ done
 if [ -d /var/lib/gems/1.8/bin ]; then
 	PATH="$PATH:/var/lib/gems/1.8/bin"
 fi
+if [ -d ~/.gem/ruby/1.8/bin ]; then
+	PATH="$PATH:~/.gem/ruby/1.8/bin"
+fi
 
 # Include bin from home directory
 if [ -d ~/bin ]; then
