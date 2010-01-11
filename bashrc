@@ -27,8 +27,8 @@ if [ -f /etc/bash_completion ]; then
 fi
 
 # Pull in aliases from .bash_aliases if it exists
-if [ -f ~/.bash_aliases ]; then
-    . ~/.bash_aliases
+if [ -f $HOME/.bash_aliases ]; then
+    . $HOME/.bash_aliases
 fi
 
 
@@ -80,13 +80,13 @@ done
 if [ -d /var/lib/gems/1.8/bin ]; then
 	PATH="$PATH:/var/lib/gems/1.8/bin"
 fi
-if [ -d ~/.gem/ruby/1.8/bin ]; then
-	PATH="$PATH:~/.gem/ruby/1.8/bin"
+if [ -d $HOME/.gem/ruby/1.8/bin ]; then
+	PATH="$PATH:$HOME/.gem/ruby/1.8/bin"
 fi
 
 # Include bin from home directory
 if [ -d ~/bin ]; then
-    PATH="~/bin:$PATH"
+    PATH="$HOME/bin:$PATH"
 fi
 
 # Look for directories in home that have a bin directory,
@@ -95,7 +95,7 @@ fi
 # ex: If you have gnutar compiled and the binary in ~/gnutar/bin then
 #     this will find it and put at the front of your path so it
 #     overrides the system version.
-for directory in ~/*/bin
+for directory in $HOME/*/bin
 do
 	PATH="${directory}:$PATH"
 done
@@ -138,8 +138,8 @@ if [ ! -S $SSH_AUTH_SOCK ]; then
 	# Add keys to agent
     eval `ssh-add`
 	# Include private keys outside of the standard id_dsa and id_rsa
-	eval `ssh-add ~/.ssh/*_dsa`
-	eval `ssh-add ~/.ssh/*_rsa`
+	eval `ssh-add $HOME/.ssh/*_dsa`
+	eval `ssh-add $HOME/.ssh/*_rsa`
 fi
 
 
