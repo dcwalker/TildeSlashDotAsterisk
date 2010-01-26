@@ -22,9 +22,23 @@ shopt -s cdspell
 shopt -s histappend
 
 # Include bash_completion if available
+if [ -d $HOME/.bash_completion.d ]; then
+    BASH_COMPLETION_DIR="$BASH_COMPLETION_DIR:$HOME/.bash_completion.d"
+  	export BASH_COMPLETION_DIR
+    for extra_completion in $HOME/.bash_completion.d/*
+    do
+    	source ${extra_completion}
+    done
+fi
 if [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 fi
+if [ -f $HOME/.bash_completion ]; then
+	BASH_COMPLETION="$HOME/.bash_completion"
+	export BASH_COMPLETION
+	source $HOME/.bash_completion
+fi
+
 
 # Pull in aliases from .bash_aliases if it exists
 if [ -f $HOME/.bash_aliases ]; then
