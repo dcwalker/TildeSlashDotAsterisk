@@ -1,4 +1,47 @@
-# If not running interactively, don't do anything
+###
+# Set PATH
+
+# Add alternative bin locations
+if [ -d /usr/local/bin ]; then
+	PATH="$PATH:/usr/local/bin"
+fi
+if [ -d /opt/local/bin ]; then
+	PATH="$PATH:/opt/local/bin"
+fi
+for directory in /usr/local/*/bin
+do
+	PATH="$PATH:${directory}"
+done
+
+# Ruby specific bin
+if [ -d /var/lib/gems/1.8/bin ]; then
+	PATH="$PATH:/var/lib/gems/1.8/bin"
+fi
+if [ -d $HOME/.gem/ruby/1.8/bin ]; then
+	PATH="$PATH:$HOME/.gem/ruby/1.8/bin"
+fi
+
+# Include bin from home directory
+if [ -d ~/bin ]; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+# Look for directories in home that have a bin directory,
+# if found then add the directory to the front of PATH.
+# This allows you to build your own versions and keep them organized.
+# ex: If you have gnutar compiled and the binary in ~/gnutar/bin then
+#     this will find it and put at the front of your path so it
+#     overrides the system version.
+for directory in $HOME/*/bin
+do
+	PATH="${directory}:$PATH"
+done
+
+
+export PATH
+
+
+# If not running interactively, don't do anything more
 if [ -z "$PS1" ]; then
    return
 fi
@@ -75,47 +118,9 @@ LIGHTBLUE="\[\033[01;36m\]"
 PS1="$GREEN\u@\h$WHITE:$BLUE\w $LIGHTBLUE\${RAILS_ENV:+(RAILS_ENV=\$RAILS_ENV) }$YELLOW\$(parse_git_branch)$WHITE\$ "
 
 
-###
-# Set PATH
-
-# Add alternative bin locations
-if [ -d /usr/local/bin ]; then
-	PATH="$PATH:/usr/local/bin"
-fi
-if [ -d /opt/local/bin ]; then
-	PATH="$PATH:/opt/local/bin"
-fi
-for directory in /usr/local/*/bin
-do
-	PATH="$PATH:${directory}"
-done
-
-# Ruby specific bin
-if [ -d /var/lib/gems/1.8/bin ]; then
-	PATH="$PATH:/var/lib/gems/1.8/bin"
-fi
-if [ -d $HOME/.gem/ruby/1.8/bin ]; then
-	PATH="$PATH:$HOME/.gem/ruby/1.8/bin"
-fi
-
-# Include bin from home directory
-if [ -d ~/bin ]; then
-    PATH="$HOME/bin:$PATH"
-fi
-
-# Look for directories in home that have a bin directory,
-# if found then add the directory to the front of PATH.
-# This allows you to build your own versions and keep them organized.
-# ex: If you have gnutar compiled and the binary in ~/gnutar/bin then
-#     this will find it and put at the front of your path so it
-#     overrides the system version.
-for directory in $HOME/*/bin
-do
-	PATH="${directory}:$PATH"
-done
-
-export PATH
-
+# Set autotest to automatically run features too
+AUTOFEATURE=true
+export AUTOFEATURE
 
 # Make CPAN not be uselessly slow
 FTP_PASSIVE="1"
