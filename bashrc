@@ -183,6 +183,11 @@ Darwin)
 	if [ -d /Volumes ]; then
 	    CDPATH="$CDPATH:/Volumes"
 	fi
+	# Use TextMate as editor (http://manual.macromates.com/en/using_textmate_from_terminal.html)
+	export EDITOR="mate --wait"
+	export GIT_EDITOR="mate --wait --line 1"
+	export TEXEDIT='mate --wait --line %d "%s"'
+	export LESSEDIT='mate --line %lm %f'
 	;;
 Linux)
 	# Color directory listings
