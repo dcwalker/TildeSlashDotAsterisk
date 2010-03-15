@@ -136,6 +136,12 @@ if [ -x /usr/bin/vim ]; then
 	export EDITOR
 fi
 
+# Default pager is less
+PAGER=less
+export PAGER
+LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
+export LESS
+
 ###
 # SSH Agent setup
 
