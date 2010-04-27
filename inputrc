@@ -1,2 +1,8 @@
 # Case insensitive for tab completion
 set completion-ignore-case on
+
+# Enable inputing unicode characters
+set meta-flag on
+set input-meta on
+set output-meta on
+set convert-meta off
