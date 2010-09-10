@@ -218,3 +218,8 @@ alias ll='ls -l'
 # This allows for groups in the .my.cnf file to specify host/user/password options
 # based on the RAILS_ENV thats set.
 alias mysql='mysql --defaults-group-suffix=_$RAILS_ENV'
+
+# RVM config items:
+#   RVM documentation says this should be at the end of the config file.
+if [[ -s "$HOME/.rvm/scripts/rvm" ]] ; then source "$HOME/.rvm/scripts/rvm" ; fi
+if [[ -r $rvm_path/scripts/completion ]] ; then source $rvm_path/scripts/completion ; fi
