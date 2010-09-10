@@ -118,10 +118,6 @@ LIGHTBLUE="\[\033[01;36m\]"
 PS1="$GREEN\u@\h$WHITE:$BLUE\w $LIGHTBLUE\${RAILS_ENV:+(RAILS_ENV=\$RAILS_ENV) }$YELLOW\$(parse_git_branch)$WHITE\$ "
 
 
-# Set autotest to automatically run features too
-AUTOFEATURE=true
-export AUTOFEATURE
-
 # Make CPAN not be uselessly slow
 FTP_PASSIVE="1"
 export FTP_PASSIVE
