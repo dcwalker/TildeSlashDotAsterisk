@@ -157,10 +157,10 @@ if [ ! -S $SSH_AUTH_SOCK ]; then
 	# Bind agent to given SSH_AUTH_SOCK
     eval `ssh-agent -a $SSH_AUTH_SOCK`
 	# Add keys to agent
-    eval `ssh-add`
+    eval `ssh-add -t 10h`
 	# Include private keys outside of the standard id_dsa and id_rsa
-	eval `ssh-add $HOME/.ssh/*_dsa`
-	eval `ssh-add $HOME/.ssh/*_rsa`
+	eval `ssh-add -t 10h $HOME/.ssh/*_dsa`
+	eval `ssh-add -t 10h $HOME/.ssh/*_rsa`
 fi
 
 
