@@ -219,6 +219,11 @@ alias ll='ls -l'
 # based on the RAILS_ENV thats set.
 alias mysql='mysql --defaults-group-suffix=_$RAILS_ENV'
 
+# Pull in local (unshared) config from .bash_local if it exists
+if [ -f $HOME/.bash_local ]; then
+    . $HOME/.bash_local
+fi
+
 # RVM config items:
 #   RVM documentation says this should be at the end of the config file.
 if [[ -s "$HOME/.rvm/scripts/rvm" ]] ; then source "$HOME/.rvm/scripts/rvm" ; fi
