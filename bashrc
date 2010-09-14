@@ -154,15 +154,21 @@ fi
 
 # If the agent isn't running then start it
 if [ ! -S $SSH_AUTH_SOCK ]; then
-	# Bind agent to given SSH_AUTH_SOCK
-    eval `ssh-agent -a $SSH_AUTH_SOCK`
 	# Add keys to agent
     eval `ssh-add -t 10h`
 	# Include private keys outside of the standard id_dsa and id_rsa
 	eval `ssh-add -t 10h $HOME/.ssh/*_dsa`
 	eval `ssh-add -t 10h $HOME/.ssh/*_rsa`
+	# Bind agent to given SSH_AUTH_SOCK and save the env vars to file in tmp
+  eval `ssh-agent -s -a $SSH_AUTH_SOCK > /tmp/ssh-agent/env`
 fi
 
+if [ -S $SSH_AUTH_SOCK ]; then
+  # Set env vars if available
+  if [ -f /tmp/ssh-agent/env ]; then
+    . /tmp/ssh-agent/env
+  fi
+fi
 
 # Special cases based on OS type
 case `uname` in
