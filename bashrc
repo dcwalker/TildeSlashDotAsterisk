@@ -138,38 +138,6 @@ export PAGER
 LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
 export LESS
 
-###
-# SSH Agent setup
-
-# Identifies the path of a unix-domain socket used to communicate with the agent.
-SSH_AUTH_SOCK=/tmp/ssh-agent/SSHAuthSock
-export SSH_AUTH_SOCK
-
-# If the tmp location for the sock file doesn't
-# exist then create it with correct permissions.
-if [ ! -d /tmp/ssh-agent ]; then
-  mkdir /tmp/ssh-agent
-  chmod 700 /tmp/ssh-agent
-fi
-
-# If the agent isn't running then start it
-if [ ! -S $SSH_AUTH_SOCK ]; then
-	# Add keys to agent
-    eval `ssh-add -t 10h`
-	# Include private keys outside of the standard id_dsa and id_rsa
-	eval `ssh-add -t 10h $HOME/.ssh/*_dsa`
-	eval `ssh-add -t 10h $HOME/.ssh/*_rsa`
-	# Bind agent to given SSH_AUTH_SOCK and save the env vars to file in tmp
-  eval `ssh-agent -s -a $SSH_AUTH_SOCK > /tmp/ssh-agent/env`
-fi
-
-if [ -S $SSH_AUTH_SOCK ]; then
-  # Set env vars if available
-  if [ -f /tmp/ssh-agent/env ]; then
-    . /tmp/ssh-agent/env
-  fi
-fi
-
 # Special cases based on OS type
 case `uname` in
 Darwin)
@@ -204,6 +172,32 @@ Linux)
 	fi
 	# Set the terminal title to user@host:dir (RAILS_ENV) (Git Branch)
 	PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD}${RAILS_ENV:+ (RAILS_ENV=$RAILS_ENV)} $(parse_git_branch)\007"'
+
+	###
+  # SSH Agent setup
+
+  # Identifies the path of a unix-domain socket used to communicate with the agent.
+  SSH_AUTH_SOCK=/tmp/ssh-agent/SSHAuthSock
+  export SSH_AUTH_SOCK
+
+  # If the tmp location for the sock file doesn't
+  # exist then create it with correct permissions.
+  if [ ! -d /tmp/ssh-agent ]; then
+    mkdir /tmp/ssh-agent
+    chmod 700 /tmp/ssh-agent
+  fi
+
+  # If the agent isn't running then start it
+  if [ ! -S $SSH_AUTH_SOCK ]; then
+  	# Bind agent to given SSH_AUTH_SOCK and save the env vars to file in tmp
+    eval `ssh-agent -s -t 1h -a $SSH_AUTH_SOCK > /tmp/ssh-agent/env`
+  else
+    # Set env vars if available
+    if [ -f /tmp/ssh-agent/env ]; then
+      . /tmp/ssh-agent/env
+    fi
+  fi
+
 	;;
 *)
 	# A place for non-Darwin/non-Linux configurations
