@@ -141,63 +141,14 @@ export LESS
 # Special cases based on OS type
 case `uname` in
 Darwin)
-	# Use 32bit Perl instead of 64
-	VERSIONER_PERL_PREFER_32_BIT=yes
-	export VERSIONER_PERL_PREFER_32_BIT
-	# For use in plugins script (http://github.com/nazar/git-rails-plugins)
-	GIT_RAILS_PLUGINS_GIT_PATH='/usr/local/git/bin/'
-	export GIT_RAILS_PLUGINS_GIT_PATH
-	GIT_RAILS_PLUGINS_SVN_PATH='/usr/local/bin/'
-	export GIT_RAILS_PLUGINS_SVN_PATH
-	# If /Volumes exists then add it to the CDPATH to make navigating easier
-	if [ -d /Volumes ]; then
-	    CDPATH="$CDPATH:/Volumes"
-	fi
-	# Use TextMate as editor (http://manual.macromates.com/en/using_textmate_from_terminal.html)
-	export EDITOR="mate --wait"
-	export GIT_EDITOR="mate --wait --line 1"
-	export TEXEDIT='mate --wait --line %d "%s"'
-	export LESSEDIT='mate --line %lm %f'
-	;;
+  if [ -f $HOME/.bash_darwin ]; then
+      . $HOME/.bash_darwin
+  fi
+  ;;
 Linux)
-	# Color directory listings
-	eval "`dircolors -b`"
-	alias ls='ls -h --color=auto'
-	# Simulate the 'open' command in OS X
-	#alias open='xdg-open'
-	alias open='gnome-open 2> /dev/null'
-	# If /media exists then add it to the CDPATH to make navigating easier
-	if [ -d /media ]; then
-	    CDPATH="$CDPATH:/media"
-	fi
-	# Set the terminal title to user@host:dir (RAILS_ENV) (Git Branch)
-	PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD}${RAILS_ENV:+ (RAILS_ENV=$RAILS_ENV)} $(parse_git_branch)\007"'
-
-	###
-  # SSH Agent setup
-
-  # Identifies the path of a unix-domain socket used to communicate with the agent.
-  SSH_AUTH_SOCK=/tmp/ssh-agent/SSHAuthSock
-  export SSH_AUTH_SOCK
-
-  # If the tmp location for the sock file doesn't
-  # exist then create it with correct permissions.
-  if [ ! -d /tmp/ssh-agent ]; then
-    mkdir /tmp/ssh-agent
-    chmod 700 /tmp/ssh-agent
+  if [ -f $HOME/.bash_linux ]; then
+      . $HOME/.bash_linux
   fi
-
-  # If the agent isn't running then start it
-  if [ ! -S $SSH_AUTH_SOCK ]; then
-  	# Bind agent to given SSH_AUTH_SOCK and save the env vars to file in tmp
-    eval `ssh-agent -s -t 1h -a $SSH_AUTH_SOCK > /tmp/ssh-agent/env`
-  else
-    # Set env vars if available
-    if [ -f /tmp/ssh-agent/env ]; then
-      . /tmp/ssh-agent/env
-    fi
-  fi
-
 	;;
 *)
 	# A place for non-Darwin/non-Linux configurations

@@ -1,0 +1,20 @@
+# Use 32bit Perl instead of 64
+VERSIONER_PERL_PREFER_32_BIT=yes
+export VERSIONER_PERL_PREFER_32_BIT
+
+# For use in plugins script (http://github.com/nazar/git-rails-plugins)
+GIT_RAILS_PLUGINS_GIT_PATH='/usr/local/git/bin/'
+export GIT_RAILS_PLUGINS_GIT_PATH
+GIT_RAILS_PLUGINS_SVN_PATH='/usr/local/bin/'
+export GIT_RAILS_PLUGINS_SVN_PATH
+
+# If /Volumes exists then add it to the CDPATH to make navigating easier
+if [ -d /Volumes ]; then
+    CDPATH="$CDPATH:/Volumes"
+fi
+
+# Use TextMate as editor (http://manual.macromates.com/en/using_textmate_from_terminal.html)
+export EDITOR="mate --wait"
+export GIT_EDITOR="mate --wait --line 1"
+export TEXEDIT='mate --wait --line %d "%s"'
+export LESSEDIT='mate --line %lm %f'
