@@ -219,6 +219,10 @@ alias ll='ls -l'
 # based on the RAILS_ENV thats set.
 alias mysql='mysql --defaults-group-suffix=_$RAILS_ENV'
 
+# List loaded ssh keys when terminal opens
+# (a reminder of any keys that might have expired with the key agent)
+ssh-add -l
+
 # Pull in local (unshared) config from .bash_local if it exists
 if [ -f $HOME/.bash_local ]; then
     . $HOME/.bash_local
