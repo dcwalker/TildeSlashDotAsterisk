@@ -1,21 +1,5 @@
 require 'redgreen'
 require 'autotest/timestamp'
+require 'test_notifier/runner/autotest'
 
-module Autotest::Growl
-  def self.growl title, msg, img, pri=0, stick="" 
-    system "growlnotify -n autotest --image #{img} -p #{pri} -m #{ msg.inspect} #{title} #{stick}" 
-  end
-
-  Autotest.add_hook :ran_command do |autotest|
-    output = autotest.results.grep(/\d+\s.*examples?/).last.slice(/(\d+)\s.*examples?,\s(\d+)\s.*failures?(?:,\s(\d+)\s.*pending)?/)
-    # if output =~ /[1-9]\sfailures?/ 
-    if output =~ /[1-9][0-9]?\sfailure/
-      # growl "Test Results", "#{output}", "~/.autotesticons/fail.png", 2, "-s" 
-      growl "Test Results", "#{output}", "~/.autotesticons/fail.png"
-    elsif output =~ /pending/
-      growl "Test Results", "#{output}", "~/.autotesticons/pending.png" 
-    else
-      growl "Test Results", "#{output}", "~/.autotesticons/pass.png" 
-    end
-  end
-end
+TestNotifier.default_notifier = :growl
