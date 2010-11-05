@@ -1,2 +1,3 @@
+:verbose: true
 # Save time and don't generate RI or RDoc documentation
 gem: --no-rdoc --no-ri
