@@ -5,6 +5,10 @@
 --type-set=nib=.xib
 --type-set=plist=.plist
 --type-set=tmstuff=.tmproj,.tm_build_errors
+--type-set=haml=.haml
+--type-set=sass=.sass
+--type-set=mustache=.mustache
+
 --nonib
 --notmstuff
 --noxcode
