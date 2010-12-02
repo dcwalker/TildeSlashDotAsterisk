@@ -94,8 +94,14 @@ HISTCONTROL=ignoredups
 export HISTCONTROL
 
 # Create a big history file for expanded ^r use
-HISTSIZE=50000
+HISTSIZE=5000000
 export HISTSIZE
+
+# Share history file in dropbox if available
+if [ -d $HOME/Dropbox ]; then
+  HISTFILE=$HOME/Dropbox/bash_history
+  export HISTFILE
+fi
 
 ###
 # Setup command prompt
