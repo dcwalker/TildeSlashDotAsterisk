@@ -128,6 +128,12 @@ LIGHTBLUE="\[\033[01;36m\]"
 # user at host (green) colon (white) present working directory (blue) RAILS_ENV value [if available] (light blue) current Git branch (yellow) dollar sign (white) single space
 PS1="$GREEN\u@\h$WHITE:$BLUE\w $LIGHTBLUE\${RAILS_ENV:+(RAILS_ENV=\$RAILS_ENV) }$YELLOW\$(parse_git_branch)$WHITE(!\!) \$ "
 
+# Whenever displaying the prompt:
+# 1. write the previous command to the history
+# 2. clear the history list for the current session
+# 3. read in a fresh history list from the histroy file
+# result: command history in sync across all terminals without having to exit
+PROMPT_COMMAND='history -a; history -c; history -r'
 
 # Make CPAN not be uselessly slow
 FTP_PASSIVE="1"
