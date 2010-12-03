@@ -126,7 +126,7 @@ BLUE="\[\033[01;34m\]"
 LIGHTBLUE="\[\033[01;36m\]"
 
 # user at host (green) colon (white) present working directory (blue) RAILS_ENV value [if available] (light blue) current Git branch (yellow) dollar sign (white) single space
-PS1="$GREEN\u@\h$WHITE:$BLUE\w $LIGHTBLUE\${RAILS_ENV:+(RAILS_ENV=\$RAILS_ENV) }$YELLOW\$(parse_git_branch)$WHITE\$ "
+PS1="$GREEN\u@\h$WHITE:$BLUE\w $LIGHTBLUE\${RAILS_ENV:+(RAILS_ENV=\$RAILS_ENV) }$YELLOW\$(parse_git_branch)$WHITE(!\!) \$ "
 
 
 # Make CPAN not be uselessly slow
