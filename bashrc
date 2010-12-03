@@ -97,6 +97,11 @@ export HISTCONTROL
 HISTSIZE=5000000
 export HISTSIZE
 
+# Ignore common commands
+# [ \t]* means ignore any command that starts with a space
+HISTIGNORE="[ \t]*:ls:[bf]g:exit"
+export HISTIGNORE
+
 # Share history file in dropbox if available
 if [ -d $HOME/Dropbox ]; then
   HISTFILE=$HOME/Dropbox/bash_history
