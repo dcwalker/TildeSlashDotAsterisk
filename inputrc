@@ -6,3 +6,7 @@ set meta-flag on
 set input-meta on
 set output-meta on
 set convert-meta off
+
+# Page up and down search your history
+"\e[5~": history-search-backward
+"\e[6~": history-search-forward
