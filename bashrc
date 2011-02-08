@@ -99,7 +99,7 @@ export HISTSIZE
 
 # Ignore common commands
 # [ \t]* means ignore any command that starts with a space
-HISTIGNORE="[ \t]*:ls:[bf]g:exit"
+HISTIGNORE="[ \t]*:ls:[bf]g:exit:history:h"
 export HISTIGNORE
 
 # Share history file in dropbox if available
