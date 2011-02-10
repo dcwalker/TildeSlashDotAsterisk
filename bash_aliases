@@ -5,4 +5,4 @@ alias ls='ls -h'
 alias ll='ls -l'
 
 # Quick command history, show the last 10
-alias h='history 10'
+alias h='history -a; history -c; history -r; history 10'
