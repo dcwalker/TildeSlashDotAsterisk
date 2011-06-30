@@ -167,6 +167,11 @@ Linux)
       . $HOME/.bash_linux
   fi
 	;;
+CYGWIN*)
+  if [ -f $HOME/.bash_cygwin ]; then
+      . $HOME/.bash_cygwin
+  fi
+	;;
 *)
 	# A place for non-Darwin/non-Linux configurations
     ;;
