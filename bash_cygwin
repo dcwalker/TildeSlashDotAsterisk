@@ -1,0 +1,6 @@
+# Color directory listings
+eval "`dircolors -b`"
+alias ls='ls -h --color=auto'
+
+# Simulate the 'open' command in OS X
+alias open='cygstart'
