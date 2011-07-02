@@ -4,3 +4,14 @@ alias ls='ls -h --color=auto'
 
 # Simulate the 'open' command in OS X
 alias open='cygstart'
+
+if [ -z "$CLASSPATH" ]; then
+  export CLASSPATH=`cygpath --path $CLASSPATH`
+fi
+
+if [ -z "$JAVA_HOME" ]; then
+  export JAVA_HOME=`cygpath --path $JAVA_HOME`
+fi
+if [ -z "$ANT_HOME" ]; then
+  export ANT_HOME=`cygpath --path $ANT_HOME`
+fi
