@@ -1,0 +1,42 @@
+export EDITOR='/usr/bin/vim'
+
+# PATH additions
+export PATH="/opt/homebrew/bin:$PATH"
+export PATH="$HOME/Library/Python/3.9/bin:$PATH"
+export PATH="$HOME/calendar-and-contact-assistant/venv/bin:$PATH"
+export PATH="$HOME/bin:$PATH"
+
+HISTFILE=~/.zsh_history
+HISTSIZE=999999999
+SAVEHIST=$HISTSIZE
+
+## Completions
+autoload -U compinit
+#compinit -C
+compinit
+
+if [ -f ~/.trello-tools.env ]; then
+  set -a
+  source ~/.trello-tools.env
+  set +a
+fi
+
+## Prompt
+PROMPT="%B%F{green}%n%f%b@%F{cyan}%m%f %# "
+RPROMPT="%F{cyan}%~%f"
+
+## case-insensitive (all),partial-word and then substring completion
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+
+# Z script
+. "$(brew --prefix)/etc/profile.d/z.sh"
+
+# Syntax highlighting needs to go at the very end
+source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# Load secrets
+[ -f ~/.env.secrets ] && source ~/.env.secrets
