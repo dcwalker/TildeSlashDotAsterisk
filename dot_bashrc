@@ -1,0 +1,91 @@
+# Bashrc for Raspberry Pi and Linux devices
+
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+# PATH
+[ -d ~/bin ] && PATH="$HOME/bin:$PATH"
+[ -d /usr/local/bin ] && PATH="/usr/local/bin:$PATH"
+export PATH
+
+# History
+HISTCONTROL=ignoreboth  # ignore duplicates and lines starting with space
+HISTSIZE=50000
+HISTFILESIZE=100000
+HISTIGNORE="[ \t]*:ls:cd:[bf]g:exit:history:h"
+shopt -s histappend
+
+# Shell options
+shopt -s checkwinsize
+shopt -s cdspell
+
+# Aliases
+alias ll='ls -l'
+alias la='ls -la'
+alias h='history 10'
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# LESS
+export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
+export CDPATH='.:~'
+
+# Editor
+export EDITOR=vim
+
+# Debian chroot indicator (used in prompt)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# Git branch for prompt
+parse_git_branch() {
+    git symbolic-ref --short HEAD 2>/dev/null
+}
+
+# Prompt: (chroot) user@host:dir (branch) $
+PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[33m\]$(parse_git_branch && echo " ($(parse_git_branch))")\[\033[00m\] \$ '
+
+# Set terminal title for xterm
+case "$TERM" in
+xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+esac
+
+# Linux-specific
+if [[ "$(uname)" == "Linux" ]]; then
+    # Colored ls
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls -h --color=auto'
+
+    # CDPATH for mounted drives
+    [ -d /media ] && CDPATH="$CDPATH:/media"
+
+    # SSH agent (useful for headless Pi)
+    SSH_AUTH_SOCK=/tmp/ssh-agent-$USER/sock
+    export SSH_AUTH_SOCK
+    if [ ! -d "$(dirname $SSH_AUTH_SOCK)" ]; then
+        mkdir -p "$(dirname $SSH_AUTH_SOCK)"
+        chmod 700 "$(dirname $SSH_AUTH_SOCK)"
+    fi
+    if [ ! -S "$SSH_AUTH_SOCK" ]; then
+        eval "$(ssh-agent -a $SSH_AUTH_SOCK)" >/dev/null
+    fi
+fi
+
+# Bash completion
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+fi
+
+# Show loaded SSH keys
+ssh-add -l 2>/dev/null || true
+
+# Load secrets
+[ -f ~/.env.secrets ] && source ~/.env.secrets

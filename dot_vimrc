@@ -1,0 +1,288 @@
+" =============================================================================
+" APPEARANCE
+" =============================================================================
+
+" background: Tells Vim what background color the terminal has.
+" Options: 'dark', 'light'
+" Default: 'dark' or 'light' depending on terminal
+" Effect: Vim adjusts colors for readability on dark/light backgrounds
+set background=dark
+
+" syntax: Enables syntax highlighting
+" Options: 'enable' (keeps current colors), 'on' (overrides with defaults)
+" Default: off
+syntax enable
+
+" =============================================================================
+" TABS AND INDENTATION
+" =============================================================================
+
+" tabstop: Number of spaces that a <Tab> character displays as
+" Options: any positive integer
+" Default: 8
+set tabstop=4
+
+" expandtab: Use spaces instead of tab characters when pressing <Tab>
+" Options: 'expandtab' (spaces), 'noexpandtab' (real tabs)
+" Default: noexpandtab
+set expandtab
+
+" list: Show invisible characters (tabs, trailing spaces, etc.)
+" Options: 'list' (show), 'nolist' (hide)
+" Default: nolist
+set list
+
+" listchars: Define how invisible characters are displayed
+" Options: tab:XY (X=first char, Y=fill), trail:X, eol:X, space:X, etc.
+" Default: "eol:$"
+set listchars=tab:>-
+
+" autoindent: Copy indent from current line when starting a new line
+" Options: 'autoindent', 'noautoindent'
+" Default: noautoindent
+set autoindent
+
+" cindent: Enables automatic C-style indentation
+" Options: 'cindent', 'nocindent'
+" Default: nocindent
+set cindent
+
+" cinoptions: Fine-tune C-indenting behavior
+" Options: complex string of flags (see :help cinoptions-values)
+" Default: ""
+" '>4' means indent 4 spaces for continuation lines
+set cinoptions=>4
+
+" =============================================================================
+" PASTE MODE
+" =============================================================================
+
+" pastetoggle: Key to toggle 'paste' mode (disables auto-indent for pasting)
+" Options: any key or key combination
+" Default: not set
+set pastetoggle=<F12>
+
+" =============================================================================
+" FILE TYPE DETECTION
+" =============================================================================
+
+" filetype: Enable file type detection for syntax and plugins
+" Options: 'on', 'off', 'plugin on', 'indent on'
+" Default: off
+filetype on
+
+" =============================================================================
+" COMMAND-LINE COMPLETION
+" =============================================================================
+
+" wildmode: How command-line completion works when pressing <Tab>
+" Options: "", "full", "longest", "longest:full", "list", "list:full", etc.
+" Default: "full"
+" 'longest,list,full' = complete longest common, then list all, then cycle
+set wildmode=longest,list,full
+
+" wildmenu: Show completion matches in a menu above command line
+" Options: 'wildmenu', 'nowildmenu'
+" Default: nowildmenu
+set wildmenu
+
+" =============================================================================
+" HIGHLIGHT COLORS
+" =============================================================================
+
+" MatchParen: Color for matching parentheses/brackets
+" ctermbg=terminal background color, ctermfg=terminal foreground color
+" Options: color names (black, red, green, yellow, blue, magenta, cyan, white)
+"          or numbers 0-255
+" Default: ctermbg=cyan
+hi MatchParen ctermbg=darkgreen ctermfg=white
+
+" Pmenu: Popup menu colors (for completion menus)
+" Pmenu=normal items, PmenuSel=selected item, PmenuSbar=scrollbar, PmenuThumb=scrollbar thumb
+" Default: varies by colorscheme
+hi Pmenu        ctermbg=black
+hi PmenuSel     ctermbg=green
+hi PmenuSbar    ctermbg=blue
+hi PmenuThumb   ctermfg=yellow
+
+" =============================================================================
+" SEARCH
+" =============================================================================
+
+" hlsearch: Highlight all matches of previous search pattern
+" Options: 'hlsearch' (highlight), 'nohlsearch' (no highlight)
+" Default: nohlsearch
+set nohlsearch
+
+" ignorecase: Ignore case in search patterns
+" Options: 'ignorecase', 'noignorecase'
+" Default: noignorecase
+set ignorecase
+
+" smartcase: Override ignorecase if search pattern contains uppercase
+" Options: 'smartcase', 'nosmartcase'
+" Default: nosmartcase
+" Requires ignorecase to be set
+set smartcase
+
+" incsearch: Show matches as you type the search pattern
+" Options: 'incsearch', 'noincsearch'
+" Default: noincsearch
+set incsearch
+
+" =============================================================================
+" STATUS LINE
+" =============================================================================
+
+" laststatus: When to show the status line
+" Options: 0 (never), 1 (only if 2+ windows), 2 (always)
+" Default: 1
+set laststatus=2
+
+" statusline: Custom status line format
+" %f=filename, %y=filetype, %r=readonly flag, %m=modified flag
+" %==right align, %c=column, %l=line, %L=total lines, %p=percentage
+" %1* through %9* use User1-User9 highlight groups
+" Default: empty (uses ruler instead)
+set statusline=%1*\ %f\ %2*%y\ %4*%r\ %m%=%3*%(<%c,%l/%L>%3p%%%)\
+
+" User highlight groups for status line sections
+hi User1 ctermfg=green ctermbg=blue
+hi User2 ctermfg=cyan ctermbg=blue
+hi User3 ctermfg=yellow ctermbg=blue
+hi User4 ctermfg=red ctermbg=blue
+
+" =============================================================================
+" AUTO COMMANDS
+" =============================================================================
+
+" Restore cursor position when reopening a file
+" Jumps to the last known cursor position if valid
+autocmd BufReadPost *
+            \ if line("'\"") > 0 && line("'\"") <= line("$") |
+            \ exe "normal g`\"" |
+            \ endif
+
+" textwidth: Maximum line width for automatic wrapping
+" Options: any positive integer, 0 disables
+" Default: 0
+" Set to 72 for git commit messages (best practice)
+autocmd FileType gitcommit set textwidth=72
+
+" =============================================================================
+" KEY MAPPINGS
+" =============================================================================
+
+" F3: Toggle line numbers
+" nu (number): Show line numbers
+" Options: 'nu', 'nonu', 'nu!' (toggle)
+" Default: nonu
+nmap <silent> <F3> :set nu! <CR>
+
+" F4: Toggle between dark and light background
+nmap <silent> <F4>  : if &background == 'dark' <CR>
+            \set background=light <CR>
+            \else <CR>
+            \set background=dark <CR>
+            \endif <CR>
+
+" F5: Run HTML tidy on the current file
+map <silent> <F5> :call Tidy() <CR>
+
+function! Tidy() range abort
+    let savelnum = line(".")
+    exe  "%!tidy"
+    exec "normal " . savelnum . "G"
+endfunction
+
+" F7: Comment lines (prepend # to selected lines or current line)
+map <silent> <F7> :call Comment() <CR>
+function! Comment() range abort
+    let lnum = a:firstline
+    let lend = a:lastline
+    if lnum == lend
+        "no visual area, just do one line
+        let lnum = line(".")
+        let lend = line(".")
+    endif
+    exec ":". lnum .",". lend . "s/^/#/e"
+endfunction
+
+" F8: Uncomment lines (remove leading # from selected lines or current line)
+map <silent> <F8> :call UnComment() <CR>
+function! UnComment() range abort
+    let lnum = a:firstline
+    let lend = a:lastline
+    if lnum == lend
+        "no visual area, just do one line
+        let lnum = line(".")
+        let lend = line(".")
+    endif
+    exec ":". lnum .",". lend . "s/#//e"
+endfunction
+
+" F9: Maximize current window height
+nmap <silent> <F9> :resize <CR>
+
+" F10: Switch to next window and maximize it
+nmap <silent> <F10> :wincmd w<CR> :resize <CR>
+
+" =============================================================================
+" SMART TAB COMPLETION
+" =============================================================================
+
+" Tab/Shift-Tab: Smart completion
+" If at start of line or after whitespace: insert tab
+" Otherwise: trigger keyword completion (Ctrl-N/Ctrl-P behavior)
+function! InsertTabWrapper(direction)
+    let col = col('.') - 1
+    if !col || getline('.')[col - 1] !~ '\k'
+        return "\<tab>"
+    elseif "backward" == a:direction
+        return "\<c-p>"
+    elseif "forward" == a:direction
+        return "\<c-n>"
+    else
+        return "\<c-x>\<c-k>"
+    endif
+endfunction
+inoremap <tab> <c-r>=InsertTabWrapper ("forward")<cr>
+inoremap <s-tab> <c-r>=InsertTabWrapper ("backward")<cr>
+inoremap <c-tab> <c-r>=InsertTabWrapper ("startkey")<cr>
+
+" =============================================================================
+" BUFFER SELECTION
+" =============================================================================
+
+" :Bs <pattern> - Find and switch to buffers matching pattern
+" If one match: switch immediately
+" If multiple matches: list them and prompt for selection
+function! BufSel(pattern)
+  let bufcount = bufnr("$")
+  let currbufnr = 1
+  let nummatches = 0
+  let firstmatchingbufnr = 0
+  while currbufnr <= bufcount
+    if(bufexists(currbufnr))
+      let currbufname = bufname(currbufnr)
+      if(match(currbufname, a:pattern) > -1)
+        echo currbufnr . ": ". bufname(currbufnr)
+        let nummatches += 1
+        let firstmatchingbufnr = currbufnr
+      endif
+    endif
+    let currbufnr = currbufnr + 1
+  endwhile
+  if(nummatches == 1)
+    execute ":buffer ". firstmatchingbufnr
+  elseif(nummatches > 1)
+    let desiredbufnr = input("Enter buffer number: ")
+    if(strlen(desiredbufnr) != 0)
+      execute ":buffer ". desiredbufnr
+    endif
+  else
+    echo "No matching buffers"
+  endif
+endfunction
+
+command! -nargs=1 Bs :call BufSel("<args>")

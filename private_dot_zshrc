@@ -83,6 +83,15 @@ fi
 # Editor
 export EDITOR='/usr/bin/vim'
 
+# Make less more user-friendly
+export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
+
+# CDPATH - quickly cd to directories in home or Volumes
+export CDPATH='.:~:/Volumes'
+
+# Show loaded SSH keys at startup (reminder of expired keys)
+ssh-add -l 2>/dev/null || true
+
 # Enable Emacs keybindings (including Ctrl+R for reverse search)
 bindkey -e
 
@@ -90,6 +99,9 @@ bindkey -e
 HISTFILE=~/.zsh_history
 HISTSIZE=999999999
 SAVEHIST=$HISTSIZE
+HISTORY_IGNORE="(ls|cd|bg|fg|exit|history|h)"
+setopt HIST_IGNORE_DUPS      # ignore consecutive duplicates
+setopt HIST_IGNORE_SPACE     # ignore lines starting with space
 
 # Case-insensitive (all), partial-word and then substring completion
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'

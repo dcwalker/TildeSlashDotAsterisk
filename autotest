@@ -1,5 +1,0 @@
-require 'redgreen'
-require 'autotest/timestamp'
-require 'test_notifier/runner/autotest'
-
-TestNotifier.default_notifier = :growl
