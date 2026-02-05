@@ -1,0 +1,111 @@
+{
+  // Play a sound when a chat response is completed
+  // Default: false
+  "cursor.composer.shouldChimeAfterChatFinishes": true,
+
+  // Controls the text size scale (relative to base 12px) of AI chat messages.
+  // Default: 1
+  "cursor.composer.textSizeScale": 1.15,
+
+  // Controls when the startup prompt to trust a workspace is shown.
+  //  - always: Ask for trust every time an untrusted workspace is opened.
+  //  - once: Ask for trust the first time an untrusted workspace is opened.
+  //  - never: Do not ask for trust when an untrusted workspace is opened.
+  // Default: "once"
+  "security.workspace.trust.startupPrompt": "always",
+
+  // When set to true, commits will automatically be fetched from the default remote of the current Git repository. Setting to `all` will fetch from all remotes.
+  // Default: false
+  "git.autofetch": true,
+
+  // Confirm before synchronizing Git repositories.
+  // Default: true
+  "git.confirmSync": false,
+
+  // Controls where newly created terminals will appear.
+  //  - editor: Create terminals in the editor
+  //  - view: Create terminals in the terminal view
+  // Default: "view"
+  "terminal.integrated.defaultLocation": "editor",
+
+  // The default terminal profile on macOS.
+  //  - null: Automatically detect the default
+  // Default: null
+  "terminal.integrated.defaultProfile.osx": "zsh",
+
+  // Controls the number of recently used commands to keep in the terminal command history. Set to 0 to disable terminal command history.
+  // Default: 100
+  "terminal.integrated.shellIntegration.history": 5000,
+
+  // Controls the maximum number of lines the terminal keeps in its buffer. We pre-allocate memory based on this value in order to ensure a smooth experience. As such, as the value increases, so will the amount of memory.
+  // Default: 1000
+  "terminal.integrated.scrollback": 10000,
+
+  // Controls the font size in pixels of the terminal.
+  // Default: 12
+  "terminal.integrated.fontSize": 14,
+
+  // Controls whether the diff editor shows the diff side by side or inline.
+  // Default: true
+  "diffEditor.renderSideBySide": true,
+
+  // Shows the current command at the top of the terminal. This feature requires [shell integration](https://code.visualstudio.com/docs/terminal/shell-integration) to be activated. See `terminal.integrated.shellIntegration.enabled`.
+  // Default: false
+  "terminal.integrated.stickyScroll.enabled": true,
+
+  // Whether or not to allow chord keybindings in the terminal. Note that when this is true and the keystroke results in a chord it will bypass `terminal.integrated.commandsToSkipShell`, setting this to false is particularly useful when you want ctrl+k to go to your shell (not VS Code).
+  // Default: true
+  "terminal.integrated.allowChords": false,
+
+  // Commit all changes when there are no staged changes.
+  // Default: false
+  "git.enableSmartCommit": true,
+
+  // Enable or disable on-the-fly analysis of files you work on. When enabled, SonarQube for IDE will automatically analyze open files and show findings in real-time.
+  // Default: true
+  "sonarlint.automaticAnalysis": true,
+
+  // If enabled, by default, [focusing on new code](https://docs.sonarsource.com/sonarqube-for-vs-code/using/investigating-issues/#focusing-on-new-code) shows issues introduced in the last 30 days.
+  // 
+  // For the most accurate and customizable new code definition, use [Connected Mode](https://docs.sonarsource.com/sonarqube-for-vs-code/connect-your-ide/connected-mode) with SonarQube (Server, Cloud).
+  // Default: false
+  "sonarlint.focusOnNewCode": true,
+
+  // Configures the preferred type of edit to use when dropping content.
+  // 
+  // This is an ordered list of edit kinds. The first available edit of a preferred kind will be used.
+  // Default: []
+  "editor.dropIntoEditor.preferences": [
+
+  ],
+
+  // Dispatches most keybindings to the terminal instead of the workbench, overriding `terminal.integrated.commandsToSkipShell`, which can be used alternatively for fine tuning.
+  // Default: false
+  "terminal.integrated.sendKeybindingsToShell": true,
+
+  // Show alert when a terminal process exits with a non-zero exit code.
+  // Default: true
+  "terminal.integrated.showExitAlert": false,
+
+  // A set of terminal profile customizations for Mac which allows adding, removing or changing how terminals are launched. Profiles are made up of a mandatory path, optional arguments and other presentation options.
+  // 
+  // To override an existing profile use its profile name as the key, for example:
+  // 
+  // ```json
+  // "terminal.integrated.profile.osx": {
+  //   "bash": null
+  // }
+  // ```
+  // 
+  // [Read more about configuring profiles](https://code.visualstudio.com/docs/terminal/profiles).
+  // Default: Object with bash, zsh, fish, tmux, and pwsh profiles
+  "terminal.integrated.profiles.osx": {
+    "zsh": {
+      "path": "zsh",
+      "args": [
+        "-l"
+      ]
+    }
+  },
+  "explorer.confirmDelete": false
+}
