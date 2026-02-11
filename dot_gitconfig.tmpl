@@ -1,14 +1,26 @@
+# Git Large File Storage (LFS) filter configuration
+# Handles tracking and storing large files outside the normal Git repository
 [filter "lfs"]
+	# Replace LFS pointer files with actual file content on checkout
 	smudge = git-lfs smudge -- %f
+	# Long-running process that handles smudge/clean for multiple files efficiently
 	process = git-lfs filter-process
+	# Fail the operation if LFS is not installed (prevents committing large files directly)
 	required = true
+	# Replace large file content with an LFS pointer when staging
 	clean = git-lfs clean -- %f
+
+# User identity for commit authorship (populated by chezmoi template variables)
 [user]
 	name = {{ .name }}
 	email = {{ .email }}
+
+# Automatically colorize output for all Git commands that support it
 [color]
-	status = auto
-	branch = auto
+	ui = auto
+
 [alias]
+	# Display a compact, colorized branch history graph with relative dates
 	graph = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
+	# Delete all local branches that have already been merged into the current branch
 	rm-merged = "!git branch --merged | grep -v '\\*' | xargs -n 1 git branch -d"
