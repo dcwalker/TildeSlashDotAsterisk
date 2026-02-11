@@ -59,8 +59,14 @@ Install chezmoi and initialize it with this repo in one command:
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply dcwalker/TildeSlashDotAsterisk
 ```
 
-This installs chezmoi, clones the repo, and applies all configs. You will be
-prompted to provide values for any template variables (name, email, etc.).
+This installs chezmoi to `./bin/chezmoi`, clones the repo, and applies all
+configs. You will be prompted to provide your name and email for gitconfig.
+
+After the install, add chezmoi to your `PATH` so subsequent commands work:
+
+```sh
+export PATH="$HOME/bin:$PATH"
+```
 
 ### Set up a new host without overwriting existing configs
 
@@ -69,6 +75,13 @@ without applying:
 
 ```sh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init dcwalker/TildeSlashDotAsterisk
+```
+
+The install script places chezmoi at `./bin/chezmoi` (relative to where you ran
+the command, typically `~/bin/chezmoi`). Add it to your `PATH` before continuing:
+
+```sh
+export PATH="$HOME/bin:$PATH"
 ```
 
 Then compare what chezmoi would change:
