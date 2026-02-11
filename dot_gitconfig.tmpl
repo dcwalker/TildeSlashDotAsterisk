@@ -19,6 +19,11 @@
 [color]
 	ui = auto
 
+# Fast-forward only when pulling — refuse to create merge commits.
+# If branches have diverged, fail loudly so you can decide how to resolve it.
+[pull]
+	ff = only
+
 [alias]
 	# Display a compact, colorized branch history graph with relative dates
 	graph = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
