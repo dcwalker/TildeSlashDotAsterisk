@@ -60,7 +60,20 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply dcwalker/TildeSlashDotAster
 ```
 
 This installs chezmoi to `./bin/chezmoi`, clones the repo, and applies all
-configs. You will be prompted to provide your name and email for gitconfig.
+configs. You will be prompted to provide your name, email, and whether to install
+Node.js/Prettier/ESLint.
+
+### Re-prompt for init values
+
+To change answers given during `chezmoi init` (e.g. toggle Node.js installation),
+delete the config and re-initialize:
+
+```sh
+rm ~/.config/chezmoi/chezmoi.toml
+chezmoi init
+```
+
+Or edit `~/.config/chezmoi/chezmoi.toml` directly to change individual values.
 
 After the install, add chezmoi to your `PATH` so subsequent commands work:
 
