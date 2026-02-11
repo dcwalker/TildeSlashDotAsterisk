@@ -80,18 +80,6 @@ fi
 # Common Configuration (applies always)
 # ========================================
 
-# Editor
-export EDITOR='/usr/bin/vim'
-
-# Make less more user-friendly
-export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
-
-# CDPATH - quickly cd to directories in home or Volumes
-export CDPATH='.:~:/Volumes'
-
-# Show loaded SSH keys at startup (reminder of expired keys)
-ssh-add -l 2>/dev/null || true
-
 # Enable Emacs keybindings (including Ctrl+R for reverse search)
 bindkey -e
 
@@ -106,24 +94,13 @@ setopt HIST_IGNORE_SPACE     # ignore lines starting with space
 # Case-insensitive (all), partial-word and then substring completion
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
 
-# PATH additions
-export PATH="/opt/homebrew/bin:$PATH"
-export PATH="$HOME/Library/Python/3.9/bin:$PATH"
-export PATH="$HOME/calendar-and-contact-assistant/venv/bin:$PATH"
-export PATH="$HOME/bin:$PATH"
-
 # acli completion (only if acli is installed)
 if command -v acli &> /dev/null && [ -f ~/.zsh/completions/_acli ]; then
   source ~/.zsh/completions/_acli
 fi
 
-# NVM configuration
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-# Load secrets
-[ -f ~/.env.secrets ] && source ~/.env.secrets
+# Shared shell configuration (aliases, environment, NVM, etc.)
+[ -f ~/.shell_common ] && source ~/.shell_common
 
 # Syntax highlighting (if available)
 [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

@@ -1,0 +1,43 @@
+{
+  // dprint global configuration — lightweight formatter for all systems.
+  // On systems with Node.js, Prettier and ESLint handle JS/TS/CSS/HTML;
+  // dprint handles JSON, YAML, and Markdown everywhere (including Raspberry Pi).
+  //
+  // Documentation: https://dprint.dev/config/
+  // Plugin-specific options:
+  //   Markdown: https://dprint.dev/plugins/markdown/config/
+  //   JSON:     https://dprint.dev/plugins/json/config/
+  //   YAML:     https://github.com/nicolo-ribaudo/dprint-plugin-prettier-yaml (pretty_yaml)
+
+  "markdown": {
+    // Maximum line width before prose is hard-wrapped.
+    // Set to 0 or remove to disable wrapping.
+    "lineWidth": 80,
+
+    // How to wrap text that exceeds lineWidth.
+    // "always" = hard-wrap, "never" = no wrapping, "preserve" = keep as-is.
+    "textWrap": "always"
+  },
+
+  "json": {
+    // Number of spaces per indentation level.
+    "indentWidth": 2
+  },
+
+  "yaml": {
+    // Number of spaces per indentation level.
+    "indentWidth": 2
+  },
+
+  // File patterns to include when running dprint on a directory.
+  "includes": ["**/*.{md,json,yaml,yml}"],
+
+  // Plugins to load. These are fetched and cached locally on first run.
+  // Update version numbers as new releases become available.
+  // Full list of available plugins: https://dprint.dev/plugins/
+  "plugins": [
+    "https://plugins.dprint.dev/markdown-0.17.8.wasm",
+    "https://plugins.dprint.dev/json-0.19.4.wasm",
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-0.5.0.wasm"
+  ]
+}

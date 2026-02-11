@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Install Node.js (via NVM), Prettier, and ESLint.
+# Skipped on Raspberry Pi and other systems where installNode is false.
+
+{{ if not .installNode -}}
+echo "Node.js installation skipped (installNode is false)."
+exit 0
+{{ end -}}
+
+# Install NVM if not already present
+export NVM_DIR="$HOME/.nvm"
+if [ ! -d "$NVM_DIR" ]; then
+    echo "Installing NVM..."
+    curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+    echo "NVM installed successfully!"
+else
+    echo "NVM is already installed."
+fi
+
+# Load NVM for this script
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Install Node.js LTS
+if ! command -v node &> /dev/null; then
+    echo "Installing Node.js LTS..."
+    nvm install --lts
+    nvm use --lts
+    nvm alias default lts/*
+    echo "Node.js $(node --version) installed successfully!"
+else
+    echo "Node.js $(node --version) is already installed."
+fi
+
+# Install global npm packages
+echo "Installing global npm packages..."
+npm install -g prettier eslint eslint-config-prettier
+echo "Global npm packages installed successfully!"

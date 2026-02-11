@@ -1,0 +1,75 @@
+# Shared shell configuration - sourced by both .bashrc and .zshrc
+# Keep settings here that work identically in both bash and zsh.
+
+# ========================================
+# Environment
+# ========================================
+
+# Editor
+export EDITOR=vim
+
+# Make less more user-friendly
+export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
+
+# PATH additions (only add directories that exist)
+[ -d "$HOME/.dprint/bin" ] && PATH="$HOME/.dprint/bin:$PATH"
+[ -d "/opt/homebrew/bin" ] && PATH="/opt/homebrew/bin:$PATH"
+[ -d "/usr/local/bin" ] && PATH="/usr/local/bin:$PATH"
+[ -d "$HOME/Library/Python/3.9/bin" ] && PATH="$HOME/Library/Python/3.9/bin:$PATH"
+[ -d "$HOME/calendar-and-contact-assistant/venv/bin" ] && PATH="$HOME/calendar-and-contact-assistant/venv/bin:$PATH"
+[ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
+export PATH
+
+# CDPATH - quickly cd into common directories (only add those that exist)
+CDPATH='.:~'
+[ -d "/Volumes" ] && CDPATH="$CDPATH:/Volumes"
+[ -d "/media" ] && CDPATH="$CDPATH:/media"
+export CDPATH
+
+# ========================================
+# Aliases
+# ========================================
+
+# Common shortcuts
+alias ll='ls -l'
+alias la='ls -la'
+alias h='history 10'
+
+# Colorized grep
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# dprint - code formatter for JSON, YAML, Markdown, and more
+# Uses global config at ~/.dprint.json so it works anywhere on the filesystem
+alias fmt='dprint fmt --config ~/.dprint.json'
+alias fmtcheck='dprint check --config ~/.dprint.json'
+
+# Prettier - JS/TS/CSS/HTML formatter (only when available)
+if command -v prettier &> /dev/null; then
+    alias prettierfix='prettier --write .'
+    alias prettiercheck='prettier --check .'
+fi
+
+# ESLint - JS/TS linter (only when available)
+if command -v eslint &> /dev/null; then
+    alias lint='eslint .'
+    alias lintfix='eslint --fix .'
+fi
+
+# ========================================
+# NVM (Node Version Manager)
+# ========================================
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# ========================================
+# Startup
+# ========================================
+
+# Show loaded SSH keys at startup (reminder of expired keys)
+ssh-add -l 2>/dev/null || true
+
+# Load secrets
+[ -f ~/.env.secrets ] && source ~/.env.secrets
