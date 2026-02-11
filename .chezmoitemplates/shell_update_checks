@@ -1,0 +1,203 @@
+# ========================================
+# Package Update Checks
+# ========================================
+# Checks multiple package managers and caches results daily
+
+# Cache configuration
+_UPDATE_CHECK_CACHE="$HOME/.cache/shell-startup/package-updates"
+_UPDATE_CHECK_MAX_AGE=86400  # 24 hours in seconds
+
+# Run all update checks and cache results
+_run_update_checks() {
+  mkdir -p "$(dirname "$_UPDATE_CHECK_CACHE")"
+  {
+    _check_npm_updates
+    _check_pip_updates
+    _check_rpm_updates
+    _check_apt_updates
+    _check_cargo_updates
+    _check_mas_updates
+    _check_chezmoi_updates
+    _check_rustup_updates
+    _check_acli_updates
+    _check_dprint_updates
+  } > "$_UPDATE_CHECK_CACHE.tmp" 2>/dev/null
+  mv "$_UPDATE_CHECK_CACHE.tmp" "$_UPDATE_CHECK_CACHE"
+}
+
+# Display cached update check results
+_show_update_checks() {
+  local cache_age=999999
+  local needs_refresh=false
+  
+  if [ -f "$_UPDATE_CHECK_CACHE" ]; then
+    local now=$(date +%s)
+    local cache_time=$(stat -f %m "$_UPDATE_CHECK_CACHE" 2>/dev/null || stat -c %Y "$_UPDATE_CHECK_CACHE" 2>/dev/null)
+    cache_age=$((now - cache_time))
+    
+    # Display cached results immediately
+    if [ -s "$_UPDATE_CHECK_CACHE" ]; then
+      cat "$_UPDATE_CHECK_CACHE"
+      echo ""
+      echo "Run 'update-check-refresh' to refresh these checks"
+    fi
+    
+    # Check if refresh needed
+    if [ $cache_age -gt $_UPDATE_CHECK_MAX_AGE ]; then
+      needs_refresh=true
+    fi
+  else
+    # No cache exists, need to create it
+    needs_refresh=true
+  fi
+  
+  # If refresh needed, do it in background
+  if [ "$needs_refresh" = true ]; then
+    (nohup _run_update_checks >/dev/null 2>&1 &)
+  fi
+}
+
+# Alias to manually refresh update checks
+alias update-check-refresh='_run_update_checks && echo "Update checks refreshed!" && cat "$_UPDATE_CHECK_CACHE"'
+
+# Check for outdated npm packages (global and local)
+_check_npm_updates() {
+  if command -v npm >/dev/null 2>&1; then
+    # Check global packages
+    local outdated_global=$(npm outdated -g --depth=0 2>/dev/null | tail -n +2)
+    if [ -n "$outdated_global" ]; then
+      local count=$(echo "$outdated_global" | wc -l | tr -d ' ')
+      echo "📦 $count global npm packages need updating (npm outdated -g && npm update -g)"
+    fi
+    
+    # Check local packages if package.json exists
+    if [ -f package.json ]; then
+      local outdated_local=$(npm outdated --depth=0 2>/dev/null | tail -n +2)
+      if [ -n "$outdated_local" ]; then
+        local count=$(echo "$outdated_local" | wc -l | tr -d ' ')
+        
+        # Detect package manager from lock files
+        if [ -f yarn.lock ]; then
+          echo "📦 $count local npm packages need updating (yarn upgrade --latest)"
+        elif [ -f pnpm-lock.yaml ]; then
+          echo "📦 $count local npm packages need updating (pnpm update --latest)"
+        elif [ -f package-lock.json ]; then
+          echo "📦 $count local npm packages need updating (npm update)"
+        else
+          echo "📦 $count local npm packages need updating (npm update or yarn upgrade --latest)"
+        fi
+      fi
+    fi
+  fi
+}
+
+# Check for outdated Python packages
+_check_pip_updates() {
+  if command -v pip >/dev/null 2>&1; then
+    local outdated=$(pip list --outdated 2>/dev/null)
+    if [ -n "$outdated" ]; then
+      local count=$(echo "$outdated" | wc -l | tr -d ' ')
+      if [ -n "$VIRTUAL_ENV" ]; then
+        echo "🐍 $count Python packages (virtualenv) need updating (pip list --outdated | tail -n +3 | awk '{print \\$1}' | xargs pip install --upgrade)"
+      else
+        echo "🐍 $count Python packages (global) need updating (pip list --outdated | tail -n +3 | awk '{print \\$1}' | xargs pip install --upgrade)"
+      fi
+    fi
+  fi
+}
+
+# Check for outdated RPM packages (RHEL/Fedora/CentOS)
+_check_rpm_updates() {
+  if command -v dnf >/dev/null 2>&1; then
+    local outdated=$(dnf check-update 2>/dev/null | grep -v "^$" | grep -v "Last metadata" | tail -n +2)
+    if [ -n "$outdated" ]; then
+      local count=$(echo "$outdated" | wc -l | tr -d ' ')
+      echo "📦 $count DNF packages need updating (sudo dnf upgrade)"
+    fi
+  elif command -v yum >/dev/null 2>&1; then
+    local outdated=$(yum check-update 2>/dev/null | tail -n +2 | grep -v "^$")
+    if [ -n "$outdated" ]; then
+      local count=$(echo "$outdated" | wc -l | tr -d ' ')
+      echo "📦 $count YUM packages need updating (sudo yum upgrade)"
+    fi
+  fi
+}
+
+# Check for outdated APT packages (Debian/Ubuntu/Raspberry Pi)
+_check_apt_updates() {
+  if command -v apt >/dev/null 2>&1; then
+    local outdated=$(apt list --upgradable 2>/dev/null | grep -v "^Listing" | grep -v "^$")
+    if [ -n "$outdated" ]; then
+      local count=$(echo "$outdated" | wc -l | tr -d ' ')
+      echo "📦 $count APT packages need updating (sudo apt upgrade)"
+    fi
+  fi
+}
+
+# Check for outdated Cargo packages (Rust)
+_check_cargo_updates() {
+  if command -v cargo >/dev/null 2>&1 && command -v cargo-install-update >/dev/null 2>&1; then
+    local outdated=$(cargo install-update --list 2>/dev/null | grep -v "^$" | tail -n +2)
+    if [ -n "$outdated" ]; then
+      local count=$(echo "$outdated" | wc -l | tr -d ' ')
+      echo "🦀 $count Cargo packages need updating (cargo install-update --all)"
+    fi
+  fi
+}
+
+# Check for outdated Mac App Store apps
+_check_mas_updates() {
+  if command -v mas >/dev/null 2>&1; then
+    local outdated=$(mas outdated 2>/dev/null)
+    if [ -n "$outdated" ]; then
+      local count=$(echo "$outdated" | wc -l | tr -d ' ')
+      echo "🍎 $count Mac App Store apps need updating (mas upgrade)"
+    fi
+  fi
+}
+
+# Check for unapplied chezmoi dotfile changes
+_check_chezmoi_updates() {
+  if command -v chezmoi >/dev/null 2>&1; then
+    local chezmoi_status=$(chezmoi status 2>/dev/null)
+    if [ -n "$chezmoi_status" ]; then
+      local count=$(echo "$chezmoi_status" | wc -l | tr -d ' ')
+      echo "🏠 $count chezmoi dotfile changes pending (chezmoi diff to review, chezmoi apply to apply)"
+    fi
+  fi
+}
+
+# Check for rustup updates
+_check_rustup_updates() {
+  if command -v rustup >/dev/null 2>&1; then
+    local check_output=$(rustup check 2>/dev/null)
+    if echo "$check_output" | grep -q "Update available"; then
+      echo "🦀 rustup updates available (rustup update)"
+    fi
+  fi
+}
+
+# Check for acli updates
+_check_acli_updates() {
+  if command -v acli >/dev/null 2>&1; then
+    local version_output=$(acli --version 2>/dev/null)
+    if echo "$version_output" | grep -q "outdated version"; then
+      local current=$(echo "$version_output" | grep "outdated version" | sed -n 's/.*outdated version \([0-9.-]*[a-z]*\)\..*/\1/p')
+      local latest=$(echo "$version_output" | grep "outdated version" | sed -n 's/.*latest version \([0-9.-]*[a-z]*\)\..*/\1/p')
+      echo "⚡ acli update available: $current → $latest (see https://developer.atlassian.com/cloud/acli/guides/install-acli/)"
+    fi
+  fi
+}
+
+# Check for dprint updates
+_check_dprint_updates() {
+  if command -v dprint >/dev/null 2>&1; then
+    local current=$(dprint --version 2>/dev/null | awk '{print $2}')
+    if [ -n "$current" ] && command -v chezmoi >/dev/null 2>&1; then
+      local latest=$(chezmoi execute-template "{{`{{ (gitHubLatestRelease \"dprint/dprint\").TagName }}`}}" 2>/dev/null)
+      if [ -n "$latest" ] && [ "$current" != "$latest" ]; then
+        echo "📝 dprint update available: $current → $latest (curl -fsSL https://dprint.dev/install.sh | sh)"
+      fi
+    fi
+  fi
+}

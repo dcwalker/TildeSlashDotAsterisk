@@ -11,7 +11,7 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
   ZSH_THEME="robbyrussell"
   
   # Which plugins would you like to load?
-  plugins=(git yarn z brew nvm npm macos colored-man-pages chezmoi)
+  plugins=(git yarn nvm npm macos colored-man-pages chezmoi zsh-syntax-highlighting)
   
   source $ZSH/oh-my-zsh.sh
   
@@ -71,9 +71,6 @@ else
   PROMPT='%{[1;32m%}%n%{[0;37m%}@%{[0;36m%}%m%{[0;37m%} %{[0;36m%}%~%{[0;37m%}${vcs_info_msg_0_} %# '
   RPROMPT=""
   
-  # Z script (if available)
-  [ -f "$(brew --prefix 2>/dev/null)/etc/profile.d/z.sh" ] && . "$(brew --prefix)/etc/profile.d/z.sh"
-  
 fi
 
 # ========================================
@@ -99,8 +96,8 @@ if command -v acli &> /dev/null && [ -f ~/.zsh/completions/_acli ]; then
   source ~/.zsh/completions/_acli
 fi
 
-# Shared shell configuration (aliases, environment, NVM, etc.)
-[ -f ~/.shell_common ] && source ~/.shell_common
+# ========================================
+# Shared Configuration
+# ========================================
 
-# Syntax highlighting (if available)
-[ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+{{ template "shell_common" }}

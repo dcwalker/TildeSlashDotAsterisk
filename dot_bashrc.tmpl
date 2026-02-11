@@ -14,8 +14,11 @@ shopt -s histappend
 shopt -s checkwinsize
 shopt -s cdspell
 
-# Shared shell configuration (aliases, environment, etc.)
-[ -f ~/.shell_common ] && source ~/.shell_common
+# ========================================
+# Shared Configuration
+# ========================================
+
+{{ template "shell_common" }}
 
 # Debian chroot indicator (used in prompt)
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then

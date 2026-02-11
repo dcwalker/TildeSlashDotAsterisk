@@ -1,6 +1,3 @@
-# Shared shell configuration - sourced by both .bashrc and .zshrc
-# Keep settings here that work identically in both bash and zsh.
-
 # ========================================
 # Environment
 # ========================================
@@ -13,7 +10,6 @@ export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit
 
 # PATH additions (only add directories that exist)
 [ -d "$HOME/.dprint/bin" ] && PATH="$HOME/.dprint/bin:$PATH"
-[ -d "/opt/homebrew/bin" ] && PATH="/opt/homebrew/bin:$PATH"
 [ -d "/usr/local/bin" ] && PATH="/usr/local/bin:$PATH"
 [ -d "$HOME/Library/Python/3.9/bin" ] && PATH="$HOME/Library/Python/3.9/bin:$PATH"
 [ -d "$HOME/calendar-and-contact-assistant/venv/bin" ] && PATH="$HOME/calendar-and-contact-assistant/venv/bin:$PATH"
@@ -70,6 +66,11 @@ export NVM_DIR="$HOME/.nvm"
 
 # Show loaded SSH keys at startup (reminder of expired keys)
 ssh-add -l 2>/dev/null || true
+
+{{ template "shell_update_checks" }}
+
+# Show update check results (cached, refreshed daily)
+_show_update_checks
 
 # Load secrets
 [ -f ~/.env.secrets ] && source ~/.env.secrets
