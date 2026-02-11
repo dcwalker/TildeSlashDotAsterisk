@@ -1,6 +1,6 @@
 {{- $name := promptStringOnce . "name" "Git display name" -}}
 {{- $email := promptStringOnce . "email" "Git email address" -}}
-{{- $installNode := promptBoolOnce . "installNode" "Install Node.js, Prettier, and ESLint" -}}
+{{- $installNode := promptBoolOnce . "installNode" "Install Node.js, Prettier, and ESLint (yes/no)" -}}
 
 [data]
     name = {{ $name | quote }}
