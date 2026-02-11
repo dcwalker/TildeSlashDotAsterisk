@@ -26,7 +26,7 @@
   //  - editor: Create terminals in the editor
   //  - view: Create terminals in the terminal view
   // Default: "view"
-  "terminal.integrated.defaultLocation": "editor",
+  "terminal.integrated.defaultLocation": "view",
 
   // The default terminal profile on macOS.
   //  - null: Automatically detect the default
@@ -35,19 +35,15 @@
 
   // Controls the number of recently used commands to keep in the terminal command history. Set to 0 to disable terminal command history.
   // Default: 100
-  "terminal.integrated.shellIntegration.history": 5000,
+  "terminal.integrated.shellIntegration.history": 0,
 
   // Controls the maximum number of lines the terminal keeps in its buffer. We pre-allocate memory based on this value in order to ensure a smooth experience. As such, as the value increases, so will the amount of memory.
   // Default: 1000
-  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.scrollback": 100000,
 
   // Controls the font size in pixels of the terminal.
   // Default: 12
   "terminal.integrated.fontSize": 14,
-
-  // Controls whether the diff editor shows the diff side by side or inline.
-  // Default: true
-  "diffEditor.renderSideBySide": true,
 
   // Shows the current command at the top of the terminal. This feature requires [shell integration](https://code.visualstudio.com/docs/terminal/shell-integration) to be activated. See `terminal.integrated.shellIntegration.enabled`.
   // Default: false
@@ -69,7 +65,7 @@
   // 
   // For the most accurate and customizable new code definition, use [Connected Mode](https://docs.sonarsource.com/sonarqube-for-vs-code/connect-your-ide/connected-mode) with SonarQube (Server, Cloud).
   // Default: false
-  "sonarlint.focusOnNewCode": true,
+  "sonarlint.focusOnNewCode": false,
 
   // Configures the preferred type of edit to use when dropping content.
   // 
@@ -107,5 +103,10 @@
       ]
     }
   },
-  "explorer.confirmDelete": false
+  "explorer.confirmDelete": false,
+
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
 }
