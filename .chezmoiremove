@@ -1,2 +1,3 @@
 .shell_common
 .zprofile
+.eslintrc.json

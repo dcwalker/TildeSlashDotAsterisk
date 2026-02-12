@@ -49,8 +49,7 @@ fi
 
 # ESLint - JS/TS linter (only when available)
 if command -v eslint &> /dev/null; then
-    alias lint='eslint .'
-    alias lintfix='eslint --fix .'
+    alias eslint-global='eslint --config ~/.config/eslint/eslint.config.mjs'
 fi
 
 # ========================================

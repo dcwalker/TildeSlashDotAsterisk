@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Install global npm packages required for personal tooling
+# Includes ESLint plugins for the personal ESLint config and other global tools
+
+{{ if not .installNode -}}
+echo "Node.js installation skipped (installNode is false)."
+exit 0
+{{ end -}}
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    echo "npm is not available. Skipping global npm package installation."
+    exit 0
+fi
+
+# List of required global packages
+REQUIRED_PACKAGES=(
+    # ESLint and plugins for personal config
+    "eslint"
+    "@eslint/js"
+    "globals"
+    "@typescript-eslint/eslint-plugin"
+    "@typescript-eslint/parser"
+    "@eslint/eslintrc"
+    "eslint-config-prettier"
+    "eslint-plugin-jest"
+    "eslint-plugin-jsdoc"
+    # Code formatters
+    "prettier"
+    # Other tools
+    "sonarqube-scanner"
+)
+
+echo "Checking and installing global npm packages..."
+
+for package in "${REQUIRED_PACKAGES[@]}"; do
+    if npm list -g "$package" &> /dev/null; then
+        echo "✓ $package is already installed"
+    else
+        echo "Installing $package..."
+        npm install -g "$package" --no-fund
+    fi
+done
+
+echo "Global npm packages check complete!"

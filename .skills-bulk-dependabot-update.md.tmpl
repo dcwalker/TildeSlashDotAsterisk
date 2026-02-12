@@ -1,0 +1,54 @@
+---
+name: bulk-dependabot-update
+description: Process multiple open Dependabot PRs by creating a bulk update to package.json that supersedes individual PRs. Use when the user wants to batch update dependencies or handle multiple Dependabot PRs at once.
+---
+
+# Bulk Dependabot Update
+
+Process multiple open Dependabot PRs by creating a bulk update to package.json that supersedes individual PRs, which is faster than approving and merging each PR individually.
+
+## When to Use
+
+Use this skill when the user wants to:
+- Handle multiple open Dependabot PRs at once
+- Batch update dependencies
+- Consolidate dependency updates into a single commit
+
+## Instructions
+
+Please start by reviewing the AGENTS.md and CONTRIBUTING.md files. Then run `scripts/list-dependabot-prs.sh --help` to understand how the script works.
+
+Next, run `scripts/list-dependabot-prs.sh` with no options to list all of the open PRs in this repo from Dependabot.
+
+If the script fails or returns an error, stop and report the issue before proceeding.
+
+If there are no open Dependabot PRs, report that to the user.
+
+Review the Dependabot PRs and follow this workflow:
+
+1. For each Dependabot PR, identify what needs to be updated:
+   - If the PR updates a direct dependency (listed in package.json), note the package name and target version.
+   - If the PR updates an indirect dependency (transitive dependency not in package.json), identify which direct dependency in package.json needs to be updated to bring in the newer transitive version.
+
+2. Group all updates and create a plan:
+   - List all package.json files that need updates.
+   - List all direct dependencies to be updated with their current and target versions.
+   - Present the plan to the user for review before proceeding.
+
+3. After plan approval, update the package.json file(s):
+   - Update each direct dependency to the appropriate version.
+   - DO NOT add new dependencies.
+   - The goal is to create a bulk update that supersedes multiple individual Dependabot PRs, which is faster than approving and merging each PR individually.
+
+4. Run `yarn install` (or the appropriate package manager command) to update the lock file.
+
+5. Verify the updates:
+   - Run tests and linters to ensure the updates don't break anything.
+   - If there are breaking changes or test failures, report them and ask how to proceed.
+
+6. Commit the changes. Follow the commit workflow in the commit skill, ensuring the commit message includes all Dependabot PR numbers/titles that will be resolved.
+
+## Example Scenario
+
+- Dependabot PR updates `lodash` from 4.17.20 to 4.17.21 (direct dependency) → Update `lodash` in package.json
+- Dependabot PR updates `@types/node` from 16.0.0 to 16.1.0 (dependency of `typescript`) → Update `typescript` in package.json to a version that requires the newer `@types/node`
