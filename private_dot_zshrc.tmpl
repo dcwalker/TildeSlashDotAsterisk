@@ -12,9 +12,13 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
   
   # Which plugins would you like to load?
   plugins=(git yarn nvm npm macos colored-man-pages chezmoi zsh-syntax-highlighting)
-  
+
+  # Disable plugin and core library aliases (we define our own in shell_common)
+  zstyle ':omz:plugins:*' aliases no
+  zstyle ':omz:lib:*' aliases no
+
   source $ZSH/oh-my-zsh.sh
-  
+
   # Custom git prompt with truncated branch name (max 30 chars)
   git_prompt_info() {
     local ref
@@ -101,3 +105,6 @@ fi
 # ========================================
 
 {{ template "shell_common" }}
+
+# Remove leftover aliases not suppressed by zstyle
+unalias globurl run-help which-command 2>/dev/null

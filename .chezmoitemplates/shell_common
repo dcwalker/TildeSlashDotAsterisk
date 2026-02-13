@@ -27,15 +27,8 @@ export CDPATH
 # Aliases
 # ========================================
 
-# Common shortcuts
-alias ll='ls -l'
-alias la='ls -la'
-alias h='history 10'
-
 # Colorized grep
 alias grep='grep --color=auto'
-alias fgrep='fgrep --color=auto'
-alias egrep='egrep --color=auto'
 
 # dprint - code formatter for JSON, YAML, Markdown, and more
 # Uses global config at ~/.dprint.json so it works anywhere on the filesystem
