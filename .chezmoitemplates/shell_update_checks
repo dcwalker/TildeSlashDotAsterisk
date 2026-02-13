@@ -156,13 +156,25 @@ _check_mas_updates() {
   fi
 }
 
-# Check for unapplied chezmoi dotfile changes
+# Check for unapplied chezmoi dotfile changes and remote updates
 _check_chezmoi_updates() {
   if command -v chezmoi >/dev/null 2>&1; then
     local chezmoi_status=$(chezmoi status 2>/dev/null)
     if [ -n "$chezmoi_status" ]; then
       local count=$(echo "$chezmoi_status" | wc -l | tr -d ' ')
       echo "🏠 $count chezmoi dotfile changes pending (chezmoi diff to review, chezmoi apply to apply)"
+    fi
+
+    # Check if remote repo has new commits
+    local source_dir
+    source_dir="$(chezmoi source-path 2>/dev/null)"
+    if [ -n "$source_dir" ] && [ -d "$source_dir/.git" ]; then
+      git -C "$source_dir" fetch --quiet 2>/dev/null
+      local behind
+      behind=$(git -C "$source_dir" rev-list --count HEAD..@{u} 2>/dev/null)
+      if [ -n "$behind" ] && [ "$behind" -gt 0 ]; then
+        echo "🏠 chezmoi repo is $behind commit(s) behind remote (chezmoi git pull && chezmoi diff to review, chezmoi apply to apply)"
+      fi
     fi
   fi
 }

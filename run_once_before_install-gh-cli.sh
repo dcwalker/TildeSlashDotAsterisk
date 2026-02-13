@@ -18,15 +18,32 @@ OS="$(uname -s)"
 
 case "$OS" in
     Darwin*)
-        # macOS
-        if command -v brew &> /dev/null; then
-            echo "Installing gh via Homebrew..."
-            brew install gh
-        else
-            echo "Error: Homebrew not found. Please install Homebrew first:"
-            echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        # macOS - install directly from GitHub releases
+        ARCH="$(uname -m)"
+        case "$ARCH" in
+            x86_64) GH_ARCH="amd64" ;;
+            arm64)  GH_ARCH="arm64" ;;
+            *)
+                echo "Error: Unsupported architecture: $ARCH"
+                exit 1
+                ;;
+        esac
+
+        # Get latest version from GitHub API
+        GH_VERSION=$(curl -sL https://api.github.com/repos/cli/cli/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
+        if [ -z "$GH_VERSION" ]; then
+            echo "Error: Could not determine latest gh version"
             exit 1
         fi
+
+        echo "Installing gh v${GH_VERSION} for macOS ${GH_ARCH}..."
+        TMPDIR_GH="$(mktemp -d)"
+        curl -sL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_macOS_${GH_ARCH}.zip" -o "${TMPDIR_GH}/gh.zip"
+        unzip -q "${TMPDIR_GH}/gh.zip" -d "${TMPDIR_GH}"
+        mkdir -p "$HOME/bin"
+        cp "${TMPDIR_GH}/gh_${GH_VERSION}_macOS_${GH_ARCH}/bin/gh" "$HOME/bin/gh"
+        chmod +x "$HOME/bin/gh"
+        rm -rf "${TMPDIR_GH}"
         ;;
     Linux*)
         # Linux

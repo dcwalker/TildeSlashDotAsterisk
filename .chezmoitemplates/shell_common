@@ -13,6 +13,7 @@ export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit
 [ -d "/usr/local/bin" ] && PATH="/usr/local/bin:$PATH"
 [ -d "$HOME/Library/Python/3.9/bin" ] && PATH="$HOME/Library/Python/3.9/bin:$PATH"
 [ -d "$HOME/calendar-and-contact-assistant/venv/bin" ] && PATH="$HOME/calendar-and-contact-assistant/venv/bin:$PATH"
+[ -d "$HOME/.local/bin" ] && PATH="$HOME/.local/bin:$PATH"
 [ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
 export PATH
 
