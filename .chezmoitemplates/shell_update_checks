@@ -98,9 +98,9 @@ _check_pip_updates() {
     if [ -n "$outdated" ]; then
       local count=$(echo "$outdated" | wc -l | tr -d ' ')
       if [ -n "$VIRTUAL_ENV" ]; then
-        echo "🐍 $count Python packages (virtualenv) need updating (pip list --outdated | tail -n +3 | awk '{print \\$1}' | xargs pip install --upgrade)"
+        echo "🐍 $count Python packages (virtualenv) need updating (pip list --outdated | tail -n +3 | cut -d' ' -f1 | xargs pip install --upgrade)"
       else
-        echo "🐍 $count Python packages (global) need updating (pip list --outdated | tail -n +3 | awk '{print \\$1}' | xargs pip install --upgrade)"
+        echo "🐍 $count Python packages (global) need updating (pip list --outdated | tail -n +3 | cut -d' ' -f1 | xargs pip install --upgrade)"
       fi
     fi
   fi
