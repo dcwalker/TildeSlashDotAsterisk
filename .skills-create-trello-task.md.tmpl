@@ -1,0 +1,42 @@
+---
+name: create-trello-task
+description: Create a Trello task (card) using the Trello API via a helper script. Use when the user wants to create Trello tasks from the command line.
+---
+
+# Create Trello Task
+
+Create a Trello task (card) using the Trello API.
+
+## When to Use
+
+Use this skill when:
+- The user asks to create a Trello task/card
+- The user wants to automate Trello card creation from notes or action items
+
+## Prerequisites
+
+Required environment variables:
+- `TRELLO_API_KEY`
+- `TRELLO_TOKEN`
+- `TRELLO_LIST_ID`
+- `TRELLO_BOARD_ID`
+- `TRELLO_WORKSPACE_ID`
+
+## Instructions
+
+1. Confirm required environment variables are set.
+2. Build a clear card title and optional description from user input.
+3. Add useful context in the description when available (source, owner, or rationale).
+4. Run the helper script:
+
+```bash
+create-trello-task.sh "Card title" --desc "Card description"
+```
+
+5. Share the created card URL with the user.
+6. If API creation fails, show the error and ask whether to retry.
+
+## Notes
+
+- `TRELLO_LIST_ID` determines which list receives the card.
+- The helper script validates that the list belongs to `TRELLO_BOARD_ID` and that the board belongs to `TRELLO_WORKSPACE_ID` before card creation.

@@ -1,0 +1,155 @@
+---
+name: organize-meeting-notes
+description: Clean up and structure meeting notes for a personal journal with strict formatting, guided questioning, and staged approval. Use when the user asks to organize, polish, or journalize meeting notes.
+---
+
+# Organize Meeting Notes
+
+Clean and organize raw meeting notes into a journal-ready Markdown format with this final order:
+1. Meeting metadata
+2. Attendees
+3. Action items
+4. Notes
+
+## When to Use
+
+Use this skill when:
+- The user asks to clean up, organize, or rewrite meeting notes
+- The user wants notes converted into a personal journal format
+- The user wants guided clarification of note significance before finalizing
+
+## Instructions
+
+### Step 1: Gather Inputs
+
+Collect:
+- Meeting title/topic
+- Start time
+- End time
+- Duration
+- Location (optional)
+- Attendee emails/names
+- Raw notes text
+- Any screenshots/photos and URLs
+
+If required information is missing, ask for clarification. Do not guess.
+
+### Step 2: Format Meeting Metadata
+
+Format metadata exactly as:
+- Meeting title/topic as `##` (H2)
+- Remaining metadata on one line, fields separated by `•`
+- Field order: `Start:`, `End:`, `Duration:`, `Location:` (only include location if provided)
+- Keep labels (`Start:`, `End:`, `Duration:`, `Location:`) non-bold
+- Bold only the values
+
+Time correction rule:
+- If end-start matches duration, keep end time as-is.
+- If not, strikethrough only the original end time value and append corrected end time value (start + duration), both in the `End:` field.
+- Example mismatch pattern:
+  `Start: **Feb 27, 2025 at 11:00 AM** • End: ~~11:30 AM~~ **11:07 AM** • Duration: **7 minutes** • Location: **Home**`
+- Example match pattern:
+  `Start: **Feb 27, 2025 at 11:00 AM** • End: **11:30 AM** • Duration: **30 minutes**`
+
+### Step 3: Format Attendees
+
+Transform attendee emails:
+- Email patterns: `<first>.<last>@...` or `<initial>.<last>@...`
+- Convert to title case names
+- Remove `-contractor` from names
+- Sort alphabetically by first name
+- Output as plain lines (no bullets, no extra formatting)
+
+If only an initial is available and the full first name is unknown, ask the user before finalizing.
+
+Ask the user who did not attend. After response:
+- Apply strikethrough to invited names that did not attend.
+
+### Step 4: Clean and Normalize Notes
+
+Proofread notes for clarity and grammar without changing meaning.
+
+Name rules in notes:
+- Use attendee names as source of truth for spelling.
+- First mention of each person: full name.
+- Later mentions: first name only, unless multiple attendees share the same first name.
+
+Acronym rule:
+- Spell out acronyms on first use.
+
+URL rule:
+- If URLs are listed at the end of notes, move them into relevant note locations as Markdown hyperlinks.
+
+Image rule:
+- For each screenshot/photo, ask the user for significance.
+- Add a caption under each image using either italic text or blockquote style.
+
+### Step 5: Interview for Significance
+
+For each note item:
+- Ask one question at a time about significance.
+- Wait for user response before the next question.
+- Distill key points concisely.
+- Ask for clarification when details are missing.
+- Do not infer missing facts.
+- When paraphrasing, always ask for confirmation.
+- Avoid repetition and filler language.
+
+### Step 6: Staged Approval Workflow
+
+1. First, propose updates to:
+   - Meeting Metadata
+   - Attendees
+   - Notes
+2. Wait for user approval that these are good.
+3. Then identify action items from notes.
+4. Present action items draft for review.
+5. Prompt user to confirm whether the action items are accurate.
+6. It is valid for a meeting to have no action items. If none exist, explicitly confirm this with the user.
+7. Once action items are confirmed, ask whether to create Trello tasks (one per action item).
+8. If user says yes, create one Trello card per action item using `create-trello-task.sh`.
+9. For each created Trello card, update the matching action item text to include a Markdown link to the card URL.
+10. After Trello creation (or skip), produce final Markdown document.
+
+### Step 7: Build Action Items
+
+From notes, create action items as a simple checklist bullet list:
+- Markdown format: `- [ ] ...`
+- No sub-sections
+
+Responsibility rewrite:
+- If assignee is Dan Walker: write as a task Dan needs to complete.
+- If assignee is anyone else: rewrite as a follow-up task Dan should do to confirm completion.
+
+Action item validation and Trello creation:
+- Ask: "Are these action items correct?" before finalizing.
+- If confirmed and user wants Trello cards, run one command per action item:
+  `create-trello-task.sh "<action item text>"`
+- Include `--desc` for every Trello card with source context.
+- Minimum required description context: meeting title plus meeting date/time.
+- Preferred additional context: meeting topic and a short reason the action item exists.
+- After each card is created, capture the returned card URL and replace that checklist item's text with a Markdown link to the card.
+- Use format: `- [ ] [Action item text](https://trello.com/c/...)`
+- If no action items are confirmed, skip Trello creation.
+
+### Step 8: Final Output Format
+
+When approved, return final Markdown with:
+- Metadata block first (title + metadata line)
+- Then `###### Attendees`
+- Then `###### Notes`
+- Then `###### Action Items`
+
+If notes are significantly long:
+- Add a concise italicized summary at the top.
+
+At the very end, append:
+- `#### YYYY-MM-DD HH:MM: <Meeting Title>`
+- Use 24-hour time.
+
+## Quality Rules
+
+- Keep output concise and readable.
+- Preserve factual accuracy; do not invent details.
+- Ask clarifying questions when uncertain.
+- Follow requested section order and formatting exactly.

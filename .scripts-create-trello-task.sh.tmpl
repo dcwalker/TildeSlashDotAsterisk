@@ -1,0 +1,163 @@
+#!/bin/bash
+set -euo pipefail
+
+# Script to create a Trello task (card) with board/workspace validation
+# Usage: ./create-trello-task.sh "Card title" [OPTIONS]
+# Run with -h or --help for full usage information
+
+print_help() {
+  echo "Usage: $0 \"Card title\" [OPTIONS]"
+  echo ""
+  echo "Description:"
+  echo "  Creates a Trello card in the configured list after validating the list"
+  echo "  belongs to the expected board and the board belongs to the expected workspace."
+  echo ""
+  echo "Options:"
+  echo "  -d, --desc <text>              Card description"
+  echo "  -h, --help                     Show this help message"
+  echo ""
+  echo "Example:"
+  echo "  $0 \"Follow up on release notes\" --desc \"Confirm owner and due date\""
+  echo ""
+  echo "Required Environment Variables:"
+  echo "  TRELLO_API_KEY"
+  echo "  TRELLO_TOKEN"
+  echo "  TRELLO_LIST_ID"
+  echo "  TRELLO_BOARD_ID"
+  echo "  TRELLO_WORKSPACE_ID"
+  echo ""
+  echo "Note: jq is optional but recommended for clearer output and errors."
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  print_help
+  exit 0
+fi
+
+if [[ $# -lt 1 ]]; then
+  echo "Error: Card title is required." >&2
+  echo "Use -h or --help for usage information." >&2
+  exit 1
+fi
+
+if ! command -v curl &> /dev/null; then
+  echo "Error: curl is not installed. Install it to use this script." >&2
+  exit 1
+fi
+
+for var in TRELLO_API_KEY TRELLO_TOKEN TRELLO_LIST_ID TRELLO_BOARD_ID TRELLO_WORKSPACE_ID; do
+  if [[ -z "${!var:-}" ]]; then
+    echo "Error: Missing required environment variable: $var" >&2
+    exit 1
+  fi
+done
+
+CARD_NAME="$1"
+shift
+
+CARD_DESC=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -d|--desc)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: Missing value for $1" >&2
+        exit 1
+      fi
+      CARD_DESC="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      echo "Use -h or --help for usage information." >&2
+      exit 1
+      ;;
+  esac
+done
+
+auth_query="key=${TRELLO_API_KEY}&token=${TRELLO_TOKEN}"
+
+# Validate list belongs to the expected board.
+list_response="$(
+  curl -sS "https://api.trello.com/1/lists/${TRELLO_LIST_ID}?fields=id,idBoard,name&${auth_query}"
+)"
+if command -v jq >/dev/null 2>&1; then
+  list_id="$(jq -r '.id // empty' <<<"${list_response}")"
+  list_board_id="$(jq -r '.idBoard // empty' <<<"${list_response}")"
+  if [[ -z "${list_id}" || -z "${list_board_id}" ]]; then
+    echo "Failed to fetch list details for TRELLO_LIST_ID=${TRELLO_LIST_ID}" >&2
+    jq . <<<"${list_response}" >&2 || true
+    exit 1
+  fi
+else
+  if [[ "${list_response}" != *"\"idBoard\""* ]]; then
+    echo "Failed to fetch list details for TRELLO_LIST_ID=${TRELLO_LIST_ID}" >&2
+    echo "${list_response}" >&2
+    exit 1
+  fi
+  list_board_id="$(sed -n 's/.*"idBoard":"\([^"]*\)".*/\1/p' <<<"${list_response}" | head -n1)"
+fi
+
+if [[ "${list_board_id}" != "${TRELLO_BOARD_ID}" ]]; then
+  echo "Validation failed: list ${TRELLO_LIST_ID} belongs to board ${list_board_id}, expected ${TRELLO_BOARD_ID}" >&2
+  exit 1
+fi
+
+# Validate board belongs to the expected workspace.
+board_response="$(
+  curl -sS "https://api.trello.com/1/boards/${TRELLO_BOARD_ID}?fields=id,idOrganization,name&${auth_query}"
+)"
+if command -v jq >/dev/null 2>&1; then
+  board_id="$(jq -r '.id // empty' <<<"${board_response}")"
+  board_workspace_id="$(jq -r '.idOrganization // empty' <<<"${board_response}")"
+  if [[ -z "${board_id}" ]]; then
+    echo "Failed to fetch board details for TRELLO_BOARD_ID=${TRELLO_BOARD_ID}" >&2
+    jq . <<<"${board_response}" >&2 || true
+    exit 1
+  fi
+else
+  if [[ "${board_response}" != *"\"id\""* ]]; then
+    echo "Failed to fetch board details for TRELLO_BOARD_ID=${TRELLO_BOARD_ID}" >&2
+    echo "${board_response}" >&2
+    exit 1
+  fi
+  board_workspace_id="$(sed -n 's/.*"idOrganization":"\([^"]*\)".*/\1/p' <<<"${board_response}" | head -n1)"
+fi
+
+if [[ -z "${board_workspace_id}" ]]; then
+  echo "Validation failed: board ${TRELLO_BOARD_ID} has no workspace (idOrganization)." >&2
+  exit 1
+fi
+
+if [[ "${board_workspace_id}" != "${TRELLO_WORKSPACE_ID}" ]]; then
+  echo "Validation failed: board ${TRELLO_BOARD_ID} belongs to workspace ${board_workspace_id}, expected ${TRELLO_WORKSPACE_ID}" >&2
+  exit 1
+fi
+
+response="$(
+  curl -sS -X POST "https://api.trello.com/1/cards" \
+    --data-urlencode "key=${TRELLO_API_KEY}" \
+    --data-urlencode "token=${TRELLO_TOKEN}" \
+    --data-urlencode "idList=${TRELLO_LIST_ID}" \
+    --data-urlencode "name=${CARD_NAME}" \
+    --data-urlencode "desc=${CARD_DESC}"
+)"
+
+if command -v jq >/dev/null 2>&1; then
+  if [[ "$(jq -r '.id // empty' <<<"${response}")" == "" ]]; then
+    echo "Trello API request failed:" >&2
+    jq . <<<"${response}" >&2 || echo "${response}" >&2
+    exit 1
+  fi
+
+  echo "Created Trello task:"
+  jq -r '"- Name: \(.name)\n- ID: \(.id)\n- URL: \(.shortUrl // .url)"' <<<"${response}"
+  exit 0
+fi
+
+if [[ "${response}" != *"\"id\""* ]]; then
+  echo "Trello API request failed: ${response}" >&2
+  exit 1
+fi
+
+echo "Created Trello task:"
+echo "${response}"
