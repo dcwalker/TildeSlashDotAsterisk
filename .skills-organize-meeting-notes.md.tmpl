@@ -8,8 +8,8 @@ description: Clean up and structure meeting notes for a personal journal with st
 Clean and organize raw meeting notes into a journal-ready Markdown format with this final order:
 1. Meeting metadata
 2. Attendees
-3. Action items
-4. Notes
+3. Notes
+4. Action items
 
 ## When to Use
 
@@ -65,9 +65,25 @@ If only an initial is available and the full first name is unknown, ask the user
 Ask the user who did not attend. After response:
 - Apply strikethrough to invited names that did not attend.
 
-### Step 4: Clean and Normalize Notes
+### Step 4: Interview for Significance (Notes)
 
-Proofread notes for clarity and grammar without changing meaning.
+This is the most important step. Every line of the raw notes must be reviewed in a back-and-forth interview process with the user.
+
+Process:
+- Go through each note line one at a time, in order.
+- For each line, ask a single clarifying question about its meaning, significance, or context.
+- Wait for the user's response before moving to the next line.
+- Use the user's response to expand, clarify, or refine that note into a complete, clear sentence.
+- Ask for clarification when details are missing. Do not infer missing facts.
+- When paraphrasing, always ask for confirmation before moving on.
+- The goal is to capture not just facts but also: action items, events/experiences, and information that is important to not forget.
+- Each note should become a complete sentence that stands on its own.
+- Preserve the user's original tone, word choice, and writing style. Do not sanitize or make the language generic.
+- Avoid repetition and filler language.
+
+### Step 5: Clean and Normalize Notes
+
+After the interview is complete, apply these normalization rules:
 
 Name rules in notes:
 - Use attendee names as source of truth for spelling.
@@ -81,56 +97,42 @@ URL rule:
 - If URLs are listed at the end of notes, move them into relevant note locations as Markdown hyperlinks.
 
 Image rule:
-- For each screenshot/photo, ask the user for significance.
-- Add a caption under each image using either italic text or blockquote style.
+- For each screenshot/photo, ask the user for a caption describing its significance.
+- Add the caption under each image using italic text (e.g., `*Caption describing the image*`).
+- Interlace images into the notes content based on their captions and context (place each image near the related note).
+- Use image timestamps (from file name or EXIF data) to ensure images are always presented in chronological order.
 
-### Step 5: Interview for Significance
+### Step 6: Format Notes as Bulleted List
 
-For each note item:
-- Ask one question at a time about significance.
-- Wait for user response before the next question.
-- Distill key points concisely.
-- Ask for clarification when details are missing.
-- Do not infer missing facts.
-- When paraphrasing, always ask for confirmation.
-- Avoid repetition and filler language.
+After the interview and normalization, format the notes section as a bulleted list:
+- Each note is a bullet point (`- `) containing a complete sentence.
+- Images should be interlaced at the appropriate position among the bullets based on their chronological timestamp and contextual relevance.
 
-### Step 6: Staged Approval Workflow
+### Step 7: Staged Approval Workflow
 
-1. First, propose updates to:
+1. Propose updates to:
    - Meeting Metadata
    - Attendees
    - Notes
 2. Wait for user approval that these are good.
-3. Then identify action items from notes.
-4. Present action items draft for review.
-5. Prompt user to confirm whether the action items are accurate.
-6. It is valid for a meeting to have no action items. If none exist, explicitly confirm this with the user.
-7. Once action items are confirmed, ask whether to create Trello tasks (one per action item).
-8. If user says yes, create one Trello card per action item using `create-trello-task.sh`.
-9. For each created Trello card, update the matching action item text to include a Markdown link to the card URL.
-10. After Trello creation (or skip), produce final Markdown document.
-
-### Step 7: Build Action Items
-
-From notes, create action items as a simple checklist bullet list:
-- Markdown format: `- [ ] ...`
-- No sub-sections
-
-Responsibility rewrite:
-- If assignee is Dan Walker: write as a task Dan needs to complete.
-- If assignee is anyone else: rewrite as a follow-up task Dan should do to confirm completion.
-
-Action item validation and Trello creation:
-- Ask: "Are these action items correct?" before finalizing.
-- If confirmed and user wants Trello cards, run one command per action item:
-  `create-trello-task.sh "<action item text>"`
-- Include `--desc` for every Trello card with source context.
-- Minimum required description context: meeting title plus meeting date/time.
-- Preferred additional context: meeting topic and a short reason the action item exists.
-- After each card is created, capture the returned card URL and replace that checklist item's text with a Markdown link to the card.
-- Use format: `- [ ] [Action item text](https://trello.com/c/...)`
-- If no action items are confirmed, skip Trello creation.
+3. Then identify action items from notes and format as a simple checklist bullet list:
+   - Markdown format: `- [ ] ...`
+   - No sub-sections
+   - Responsibility rewrite:
+     - If assignee is Dan Walker: write as a task Dan needs to complete.
+     - If assignee is anyone else: rewrite as a follow-up task Dan should do to confirm completion.
+4. Present action items draft for review. Ask: "Are these action items correct?"
+5. It is valid for a meeting to have no action items. If none exist, explicitly confirm this with the user.
+6. Once action items are confirmed, ask whether to create Trello tasks (one per action item).
+7. If user says yes, create one Trello card per action item:
+   - Run: `create-trello-task.sh "<action item text>"`
+   - Include `--desc` for every Trello card with source context.
+   - Minimum required description context: meeting title plus meeting date/time.
+   - Preferred additional context: meeting topic and a short reason the action item exists.
+   - After each card is created, capture the returned card URL and replace that checklist item's text with a Markdown link to the card.
+   - Use format: `- [ ] [Action item text](https://trello.com/c/...)`
+8. If no action items are confirmed, skip Trello creation.
+9. After Trello creation (or skip), produce final Markdown document.
 
 ### Step 8: Final Output Format
 
