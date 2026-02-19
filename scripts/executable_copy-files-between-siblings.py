@@ -12,13 +12,11 @@ except ImportError:
     sys.exit(1)
 
 FILES_TO_COPY = [
-    '.circleci/helpers/check-eslint-disable.sh',
-    '.circleci/helpers/check-markdown-placement.sh',
-    '.circleci/helpers/check-unpkg-usage.sh',
     '.cursor',
     '.cursor/hooks.json',
     '.cursor/hooks/',
     '.cursor/skills/',
+    '.github/workflows/convention-checks.yml',
     '.prettierrc.cjs',
     'AGENTS.md',
     'CONTRIBUTING.md',
@@ -26,12 +24,7 @@ FILES_TO_COPY = [
     'eslint-local-rules/index.mjs',
     'eslint-local-rules/no-consecutive-logging.mjs',
     'ISSUE_REPORTING_GUIDELINES.md',
-    'scripts/list-last-deployments.py',
-    'scripts/list-pr-checks.sh',
-    'scripts/list-sonar-issues.py',
-    'scripts/local_deployment_notifier.py',
-    'scripts/run-ci-checks-local.sh',
-    'scripts/upgrade-all-packages.sh',
+    'scripts/',
 ]
 
 # Path mappings for home directory: maps project path to home directory path
