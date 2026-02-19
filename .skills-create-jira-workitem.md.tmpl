@@ -68,6 +68,8 @@ Optional but recommended:
 - Priority
 - Due date
 
+For any required field (including those discovered in the generated template) where the correct value is not clear or obvious, prompt the user rather than guessing.
+
 ### Step 4: Generate JSON Template
 
 Generate a JSON template to understand the structure:
@@ -86,7 +88,7 @@ Review the template to understand available fields for the work item type.
 
 ### Step 5: Build Work Item JSON
 
-Create a JSON file with the work item details. For rich formatted descriptions, use Atlassian Document Format (ADF).
+Create a JSON file with the work item details. If a required field has no obvious value (e.g. custom dropdowns, project-specific options), ask the user before choosing a value. For rich formatted descriptions, use Atlassian Document Format (ADF).
 
 Basic ADF structure for descriptions:
 
