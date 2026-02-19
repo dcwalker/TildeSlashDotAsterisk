@@ -1,0 +1,228 @@
+---
+name: jira-workitem
+description: Create or edit Jira work items using the Atlassian CLI (acli). Use when the user wants to create, file, or update Jira issues (tasks, bugs, stories, etc.), including rich ADF descriptions, custom fields, component, parent, and bulk operations.
+---
+
+# Jira Work Item (Create and Edit)
+
+Create or edit Jira work items using the Atlassian CLI (acli), with support for rich ADF descriptions, custom fields, Component, Parent, and bulk updates. Shared field reference below applies to both create and edit.
+
+## When to Use
+
+**Create:** User wants to create a new Jira work item (issue, task, bug, story, etc.), file or submit a ticket, or add a description with rich formatting.
+
+**Edit:** User wants to update one or more tickets (assignee, status, type, summary, description, labels, custom fields), add comments, assign or reassign, transition status, change issue type, or set Jira Component or parent (e.g. link to Epic).
+
+## Prerequisites
+
+- Atlassian CLI (acli) installed and authenticated. Verify with: `acli jira auth status`.
+- Valid Jira site. For create: project key and work item type. For edit: issue key(s), JQL, or filter.
+
+Use `--fields *all` with acli when you need to see or copy custom field IDs and values.
+
+---
+
+## Field Reference (create and edit)
+
+Use this section when setting **Parent**, **Component**, or **custom/required fields** on create or edit. Same formats and discovery steps apply to both.
+
+### Parent (link to Epic or parent issue)
+
+The **parent** field links an issue to an Epic or another parent issue. acli has no `--parent` flag; set it via JSON (create or edit).
+
+- **Format:** `"parent": { "key": "PARENT_ISSUE_KEY" }` in the fields object.
+- **Create:** Include in the create JSON. **Edit:** `acli jira workitem edit --key "KEY-1,..." --from-json path/to/edit.json --yes`, or `PUT /rest/api/3/issue/{key}` with body `{"fields": {"parent": {"key": "PARENT_ISSUE_KEY"}}}` for per-issue updates.
+- **Discover:** Not all projects or issue types expose parent. Check with `acli jira workitem view PARENT_KEY --json --fields *all`; if `parent` is missing, the project may not use parent linking for that type.
+
+### Component (standard components field)
+
+On many Jira Cloud sites the repo's Compass component is linked via the standard **components** field, not a custom field.
+
+- **Discover:** View a reference issue that already has the desired component: `acli jira workitem view REF_KEY --json --fields components` (or `--fields *all`). The API returns an array of component objects with `id`, `name`, `ari`, `metadata`, etc.
+- **Format:** `"components": [ { "id": "<component_id>" } ]`. The id is numeric; use the value from the reference issue or from the project's components.
+- **Create:** Include in the create JSON. **Edit (single/batch via acli):** Put in edit JSON and apply with `--from-json`. **Edit (bulk, same component for many issues):** Use the bulk edit API (see "Bulk set Component" under Editing work items).
+
+### Component (custom field)
+
+If the project uses a **custom** component field (e.g. "Domain Component" or similar):
+
+- **Discover field ID:** Use get-jira-custom-field-details skill or run `get-field-details.py` with the field name. The ID is like `customfield_10000`. Or use create metadata: `GET /rest/api/3/issue/createmeta?projectKeys=PROJECT_KEY&issuetypeIds=ISSUE_TYPE_ID&expand=projects.issuetypes.fields` and find the field by name.
+- **Discover value:** Use get-compass-component-by-repo skill or `get-component-by-repo.py` with the repo name. Use the component name or ID in the format the field expects.
+- **Format:** Typically `"customfield_XXXXX": { "value": "Component Name" }` or `{ "id": "OPTION_ID" }` depending on field type. View an issue that has the field set (`--fields *all`) to see the shape.
+- **Create:** Include in the create JSON. **Edit:** Include in the edit JSON and apply with `--from-json`.
+
+### Required and custom fields (option IDs)
+
+For **required** or **custom** select/dropdown fields (e.g. Environment, Severity), you need valid option IDs. Same process for create and for bulk move (when the target issue type has required fields).
+
+- **Create metadata API:** `GET /rest/api/3/issue/createmeta?projectKeys=PROJECT_KEY&issuetypeIds=ISSUE_TYPE_ID&expand=projects.issuetypes.fields`. In the response, find the issue type and inspect each required field's `schema` and `allowedValues`; use the option `id` (not the display value).
+- **Create JSON:** Single-select: `"customfield_XXXXX": { "id": "OPTION_ID" }`. Multi-select: array of `{ "id": "OPTION_ID" }`. Use `acli jira workitem create --generate-json --fields *all` so the template includes all required and custom fields.
+- **Bulk move (targetMandatoryFields):** When changing issue type via bulk move, if the target type has required fields, set `inferFieldDefaults: false` and send `targetMandatoryFields` with `"customfield_XXXXX": { "value": ["OPTION_ID"] }` (option id as string in a one-element array). Get field IDs and option IDs from the same create metadata API above.
+
+If the schema or value shape is unclear, prompt the user for the correct value.
+
+---
+
+## Creating a work item
+
+### Step 1: Review project docs
+
+Review AGENTS.md, CONTRIBUTING.md, and any ISSUE_REPORTING_GUIDELINES.md for project conventions and required information.
+
+### Step 2: Verify authentication
+
+```bash
+acli jira auth status
+```
+
+If not authenticated, prompt the user. They can use `acli jira auth login --site "mysite.atlassian.net" --email "user@example.com" --token` or `acli jira auth login --web`.
+
+### Step 3: Gather required information
+
+Required: project key, work item type (Task, Bug, Story, Epic, etc.), summary.
+
+Optional but recommended: description (ADF), assignee, labels, priority, due date, **parent** (see Field reference), **component** (see Field reference). For any required field discovered in the generated template where the value is not obvious, use the create metadata API (Field reference) or prompt the user.
+
+### Step 4: Generate JSON template
+
+```bash
+acli jira workitem create --generate-json > /tmp/workitem-template.json
+```
+
+If the template omits custom or required fields (e.g. Severity, Environment), generate with all fields:
+
+```bash
+acli jira workitem create --generate-json --fields *all > /tmp/workitem-template.json
+```
+
+Review the template. For required select/dropdown fields, use the create metadata API and allowedValues as in the Field reference.
+
+### Step 5: Build work item JSON
+
+Create a JSON file with the work item details. Include parent, component, and required/custom fields using the formats in the Field reference. For rich descriptions use Atlassian Document Format (ADF). Basic ADF structure:
+
+```json
+{
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "content": [{ "type": "text", "text": "Your text here" }]
+    }
+  ]
+}
+```
+
+ADF supports paragraphs, headings, lists, code blocks, tables, text formatting, links. See https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+
+### Step 6: Present draft to user
+
+Present a clear summary (project, type, assignee, labels, priority, summary, description rendered as readable text). Do not show the JSON file path or raw JSON. Ask: "Would you like to proceed with creating this work item? (yes/no)". If they request changes, update the JSON and present again.
+
+### Step 7: Create the work item
+
+```bash
+acli jira workitem create --from-json "/path/to/workitem.json"
+```
+
+Capture the work item key from the output.
+
+### Step 8: Share the result
+
+Share the link: `https://[SITE].atlassian.net/browse/[WORK_ITEM_KEY]` as a clickable URL.
+
+---
+
+## Editing work items
+
+### Selecting work items
+
+- **By key(s):** `--key "KEY-1,KEY-2,KEY-3"` (comma-separated).
+- **By JQL:** `--jql "project = PROJ AND status = 'To Do'"`.
+- **By filter ID:** `--filter 10001`.
+- **By file** (assign only): `--from-file issues.txt`.
+
+For bulk updates use `--key` or `--jql`. Use `--ignore-errors` to continue when some items fail, and `--yes` to skip confirmation prompts.
+
+### Commands by update type
+
+**Assign:** `acli jira workitem assign --key "KEY-1,KEY-2" --assignee "user@example.com"`. Use `--assignee "@me"` or `--assignee "default"`. Use `--remove-assignee` to clear. Supports `--jql`, `--filter`, `--from-file`.
+
+**Transition (status):** `acli jira workitem transition --key "KEY-1,KEY-2" --status "Done"`. Use exact status names from the project workflow.
+
+**Add comment:** `acli jira workitem comment-create --key "KEY-1" --body "Comment text"`. Use `--body-file` or `--editor` for long or ADF content. Supports `--jql`, `--filter`.
+
+**Edit fields (summary, description, type, labels, assignee):** `acli jira workitem edit --key "KEY-1,KEY-2" --summary "New summary" --type "Bug"`. Common flags: `--summary`, `--description`, `--description-file`, `--type`, `--assignee`, `--labels`, `--remove-labels`, `--remove-assignee`. Use `--generate-json` then `--from-json path/to.json` to apply edits from JSON.
+
+**Custom fields, parent, component:** Not exposed as acli flags. Use edit with a JSON payload. See Field reference above for formats and discovery. Build edit JSON with the fields to change (e.g. `"parent": { "key": "PARENT_KEY" }`, `"components": [ { "id": "<component_id>" } ]`, or `"customfield_XXXXX": { "value": "..." }`). Apply: `acli jira workitem edit --key "KEY-1,..." --from-json path/to/edit.json --yes`. To see current values: `acli jira workitem view KEY-1 --json --fields *all`.
+
+### Changing issue type when workflows differ (status mapping)
+
+If the target issue type uses a different workflow (e.g. Task "To Do" vs Bug "Backlog"), simple edit fails with "The issue type selected is invalid". Use the **Bulk move** API instead.
+
+**Check first:** Get issue status and project: `acli jira workitem view KEY --json --fields status,project`. Get target workflow statuses: `GET /rest/api/3/project/{projectIdOrKey}/statuses`. If the target issue type's statuses do not include the issue's current status id, use bulk move.
+
+**Bulk move:** `POST /rest/api/3/bulk/issues/move` with `targetToSourcesMapping`. Key format: `PROJECT_KEY,TARGET_ISSUE_TYPE_ID` (comma, not colon). For each target specify `issueIdsOrKeys`, and either `inferStatusDefaults: true` (and optionally `targetMandatoryFields` for required fields) or explicit `targetStatus` mapping. If the target type has required fields (e.g. Bug with Environment, Severity), set `inferFieldDefaults: false` and provide `targetMandatoryFields` (see Field reference for option ID format). acli does not expose bulk move; use REST with the same auth. Docs: [Bulk move issues](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-bulk-operations/#api-rest-api-3-bulk-issues-move-post), [Bulk operation FAQs](https://developer.atlassian.com/cloud/jira/platform/bulk-operation-additional-examples-and-faqs/).
+
+**Status mapping tip:** When the target type has required fields, using `inferStatusDefaults: true`, omitting `targetStatus`, and supplying `targetMandatoryFields` often works; Jira infers status (e.g. To Do to Backlog). Use explicit `targetStatus` only when you need a specific mapping.
+
+### Bulk set Component (standard components field)
+
+To set the same component on many issues in one call: `POST /rest/api/3/bulk/issues/fields` with body:
+
+```json
+{
+  "sendBulkNotification": false,
+  "selectedIssueIdsOrKeys": ["KEY-1", "KEY-2", "..."],
+  "selectedActions": ["components"],
+  "editedFieldsInput": {
+    "multiselectComponents": {
+      "fieldId": "components",
+      "bulkEditMultiSelectFieldOption": "REPLACE",
+      "components": [{ "componentId": "<component_id>" }]
+    }
+  }
+}
+```
+
+`componentId` is numeric (from reference issue or project components). Poll `GET /rest/api/3/bulk/queue/{taskId}` until status is COMPLETE.
+
+### Bulk summary changes (per-issue different value)
+
+acli `workitem edit --summary "X"` sets the same summary for all keys. To change summary per issue (e.g. strip a prefix), use one `PUT /rest/api/3/issue/{key}` per issue with body `{"fields": {"summary": "new summary"}}`. Fetch current summary first with `GET /rest/api/3/issue/{key}?fields=summary`, compute the new value, then PUT.
+
+### Example: Convert multiple issues to Bug and set Component
+
+1. Determine where component is stored: view a reference issue with the repo's Compass component (`acli jira workitem view REF_KEY --json --fields *all`). If it's the **components** field (array with `id`, `name`, `ari`), use that; otherwise find the custom field name.
+2. Standard **components** field: get component id from reference. For many issues use bulk edit API (above) with numeric `componentId`. For acli edit use JSON `{ "components": [ { "id": "<component_id>" } ] }`.
+3. Custom component field: get field ID (e.g. `get-field-details.py "Component"`) and value format; get component name (e.g. `get-component-by-repo.py`). Edit JSON: `{ "customfield_12345": { "value": "Name" } }`.
+4. For acli edit with JSON, the file must contain the `issues` array; acli does not allow both `--key` and `--from-json`. Run `acli jira workitem edit --from-json edit.json --yes`. Use `--ignore-errors` to continue when some keys fail.
+
+---
+
+## ADF formatting examples (create)
+
+**Bold:** `"marks": [{"type": "strong"}]` on text. **Code block:** `"type": "codeBlock", "attrs": { "language": "javascript" }, "content": [{ "type": "text", "text": "..." }]`. **Link:** `"marks": [{ "type": "link", "attrs": { "href": "https://example.com" } }]`. Full reference: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+
+---
+
+## Error handling (create)
+
+If creation fails: check the error message; common issues include missing required fields, invalid project key, permission, invalid ADF, or expired auth. Display the error, suggest corrective action, and offer to retry.
+
+---
+
+## Important notes
+
+- Use `--fields *all` when generating templates or viewing work items to include custom and required fields.
+- For required or custom fields where the value is not obvious, use the Field reference (createmeta, allowedValues) or prompt the user.
+- When changing issue type or status, if the correct target workflow state is unclear, prompt the user.
+- Keep JSON files in /tmp or a user-approved location; clean up after use.
+- Create: always show a draft and get user approval before creating. Work item key is case-sensitive; make the final URL clickable.
+
+## Related documentation
+
+- Atlassian CLI: https://developer.atlassian.com/cloud/acli/guides/how-to-get-started/
+- ADF: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+- acli commands: [workitem edit](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-edit/), [assign](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-assign/), [transition](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-transition/), [comment-create](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-comment-create/), [view](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-view/).
