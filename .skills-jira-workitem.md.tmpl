@@ -20,6 +20,8 @@ Create or edit Jira work items using the Atlassian CLI (acli), with support for 
 
 Use `--fields *all` with acli when you need to see or copy custom field IDs and values.
 
+**Rich formatting:** Use rich formatting (ADF) in Jira descriptions and comments whenever possible. Put code snippets, commands, and log entries inside code blocks so they are readable and preserve formatting. This is strongly recommended for all new descriptions and comments.
+
 ---
 
 ## Field Reference (create and edit)
@@ -81,7 +83,7 @@ If not authenticated, prompt the user. They can use `acli jira auth login --site
 
 Required: project key, work item type (Task, Bug, Story, Epic, etc.), summary.
 
-Optional but recommended: description (ADF), assignee, labels, priority, due date, **parent** (see Field reference), **component** (see Field reference). For any required field discovered in the generated template where the value is not obvious, use the create metadata API (Field reference) or prompt the user.
+Optional but recommended: description (ADF, with code and logs in code blocks), assignee, labels, priority, due date, **parent** (see Field reference), **component** (see Field reference). For any required field discovered in the generated template where the value is not obvious, use the create metadata API (Field reference) or prompt the user.
 
 ### Step 4: Generate JSON template
 
@@ -151,7 +153,7 @@ For bulk updates use `--key` or `--jql`. Use `--ignore-errors` to continue when 
 
 **Transition (status):** `acli jira workitem transition --key "KEY-1,KEY-2" --status "Done"`. Use exact status names from the project workflow.
 
-**Add comment:** `acli jira workitem comment-create --key "KEY-1" --body "Comment text"`. Use `--body-file` or `--editor` for long or ADF content. Supports `--jql`, `--filter`.
+**Add comment:** `acli jira workitem comment-create --key "KEY-1" --body "Comment text"`. Use `--body-file` or `--editor` for long or ADF content. Prefer rich formatting and put code or log excerpts in code blocks. Supports `--jql`, `--filter`.
 
 **Edit fields (summary, description, type, labels, assignee):** `acli jira workitem edit --key "KEY-1,KEY-2" --summary "New summary" --type "Bug"`. Common flags: `--summary`, `--description`, `--description-file`, `--type`, `--assignee`, `--labels`, `--remove-labels`, `--remove-assignee`. Use `--generate-json` then `--from-json path/to.json` to apply edits from JSON.
 
