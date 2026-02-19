@@ -76,7 +76,13 @@ Generate a JSON template to understand the structure:
 acli jira workitem create --generate-json > /tmp/workitem-template.json
 ```
 
-Review this template to understand available fields for the work item type.
+If the template omits custom or extra fields (e.g. Severity, Environment), generate again with all fields:
+
+```bash
+acli jira workitem create --generate-json --fields *all > /tmp/workitem-template.json
+```
+
+Review the template to understand available fields for the work item type.
 
 ### Step 5: Build Work Item JSON
 
@@ -266,6 +272,7 @@ If the work item creation fails:
 
 ## Important Notes
 
+- To include custom or extra fields in generated templates or when viewing work items, use `--fields *all` with acli jira commands (e.g. `workitem create --generate-json --fields *all`, or when getting an issue).
 - Always validate that all required information is provided before attempting to create the work item
 - Always show a draft and get user approval before creating
 - If description content is ambiguous, stop and ask for clarification
