@@ -18,7 +18,7 @@ Create or edit Jira work items using the Atlassian CLI (acli), with support for 
 - Atlassian CLI (acli) installed and authenticated. Verify with: `acli jira auth status`.
 - Valid Jira site. For create: project key and work item type. For edit: issue key(s), JQL, or filter.
 
-Use `--fields *all` with acli when you need to see or copy custom field IDs and values.
+Use `--fields '*all'` with acli when you need to see or copy custom field IDs and values (quote the value so the shell does not expand `*`).
 
 **Rich formatting:** Use rich formatting (ADF) in Jira descriptions and comments whenever possible. Put code snippets, commands, and log entries inside code blocks so they are readable and preserve formatting. This is strongly recommended for all new descriptions and comments.
 
@@ -34,15 +34,15 @@ The **parent** field links an issue to an Epic or another parent issue. acli has
 
 - **Format:** `"parent": { "key": "PARENT_ISSUE_KEY" }` in the fields object.
 - **Create:** Include in the create JSON. **Edit:** `acli jira workitem edit --key "KEY-1,..." --from-json path/to/edit.json --yes`, or `PUT /rest/api/3/issue/{key}` with body `{"fields": {"parent": {"key": "PARENT_ISSUE_KEY"}}}` for per-issue updates.
-- **Discover:** Not all projects or issue types expose parent. Check with `acli jira workitem view PARENT_KEY --json --fields *all`; if `parent` is missing, the project may not use parent linking for that type.
+- **Discover:** Not all projects or issue types expose parent. Check with `acli jira workitem view PARENT_KEY --json --fields '*all'`; if `parent` is missing, the project may not use parent linking for that type.
 
 ### Component (standard components field)
 
 On many Jira Cloud sites the repo's Compass component is linked via the standard **components** field, not a custom field.
 
-- **Discover:** View a reference issue that already has the desired component: `acli jira workitem view REF_KEY --json --fields components` (or `--fields *all`). The API returns an array of component objects with `id`, `name`, `ari`, `metadata`, etc.
-- **Format:** `"components": [ { "id": "<component_id>" } ]`. The id is numeric; use the value from the reference issue or from the project's components.
-- **Create:** Include in the create JSON. **Edit (single/batch via acli):** Put in edit JSON and apply with `--from-json`. **Edit (bulk, same component for many issues):** Use the bulk edit API (see "Bulk set Component" under Editing work items).
+- **Discover:** View a reference issue in the same project that already has the desired component: `acli jira workitem view REF_KEY --json --fields components` (or `--fields '*all'`). The API returns an array of component objects with `id` (string, e.g. `"24121"`), `name`, `ari`, `metadata`, etc.
+- **Format:** `"components": [ { "id": "<component_id>" } ]`. Use the `id` value from the reference issue.
+- **acli limitation:** acli `workitem create` and `workitem edit --from-json` do **not** accept the `components` field; they return "unknown field" if you include it. **Create:** Create the issue first, then set the component via REST: `PUT /rest/api/3/issue/{key}` with body `{"fields": {"components": [{"id": "<component_id>"}]}}`. Use the same auth as acli (e.g. Basic with `ATLASSIAN_USER_EMAIL` and `ATLASSIAN_USER_API_KEY`). **Edit (single/batch):** Use the same PUT request. **Edit (bulk, same component for many issues):** Use the bulk edit API (see "Bulk set Component" under Editing work items).
 
 ### Component (custom field)
 
@@ -50,15 +50,15 @@ If the project uses a **custom** component field (e.g. "Domain Component" or sim
 
 - **Discover field ID:** Use get-jira-custom-field-details skill or run `get-field-details.py` with the field name. The ID is like `customfield_10000`. Or use create metadata: `GET /rest/api/3/issue/createmeta?projectKeys=PROJECT_KEY&issuetypeIds=ISSUE_TYPE_ID&expand=projects.issuetypes.fields` and find the field by name.
 - **Discover value:** Use get-compass-component-by-repo skill or `get-component-by-repo.py` with the repo name. Use the component name or ID in the format the field expects.
-- **Format:** Typically `"customfield_XXXXX": { "value": "Component Name" }` or `{ "id": "OPTION_ID" }` depending on field type. View an issue that has the field set (`--fields *all`) to see the shape.
+- **Format:** Typically `"customfield_XXXXX": { "value": "Component Name" }` or `{ "id": "OPTION_ID" }` depending on field type. View an issue that has the field set (`--fields '*all'`) to see the shape.
 - **Create:** Include in the create JSON. **Edit:** Include in the edit JSON and apply with `--from-json`.
 
 ### Required and custom fields (option IDs)
 
 For **required** or **custom** select/dropdown fields (e.g. Environment, Severity), you need valid option IDs. Same process for create and for bulk move (when the target issue type has required fields).
 
-- **Create metadata API:** `GET /rest/api/3/issue/createmeta?projectKeys=PROJECT_KEY&issuetypeIds=ISSUE_TYPE_ID&expand=projects.issuetypes.fields`. In the response, find the issue type and inspect each required field's `schema` and `allowedValues`; use the option `id` (not the display value).
-- **Create JSON:** Single-select: `"customfield_XXXXX": { "id": "OPTION_ID" }`. Multi-select: array of `{ "id": "OPTION_ID" }`. Use `acli jira workitem create --generate-json --fields *all` so the template includes all required and custom fields.
+- **Create metadata API:** `GET /rest/api/3/issue/createmeta?projectKeys=PROJECT_KEY&issuetypeIds=ISSUE_TYPE_ID&expand=projects.issuetypes.fields`. In the response, find the issue type and inspect each required field's `schema` and `allowedValues`; use the option `id` (not the display value). Omit `issuetypeIds` to see all issue types; use the type's `id` (e.g. `1` for Bug) in the URL if needed.
+- **Create JSON (acli):** Required custom fields are not top-level keys. Put them in **additionalAttributes**: `"additionalAttributes": { "customfield_XXXXX": { "id": "OPTION_ID" } }`. Single-select option: `{ "id": "OPTION_ID" }`. Multi-select: array of `{ "id": "OPTION_ID" }`. The generated template (`acli jira workitem create --generate-json`) does not list every required field; if create fails with e.g. "Severity is required., Environment is required.", use the create metadata API to find those fields and add them to additionalAttributes.
 - **Bulk move (targetMandatoryFields):** When changing issue type via bulk move, if the target type has required fields, set `inferFieldDefaults: false` and send `targetMandatoryFields` with `"customfield_XXXXX": { "value": ["OPTION_ID"] }` (option id as string in a one-element array). Get field IDs and option IDs from the same create metadata API above.
 
 If the schema or value shape is unclear, prompt the user for the correct value.
@@ -91,17 +91,17 @@ Optional but recommended: description (ADF, with code and logs in code blocks), 
 acli jira workitem create --generate-json > /tmp/workitem-template.json
 ```
 
-If the template omits custom or required fields (e.g. Severity, Environment), generate with all fields:
+If the template omits custom or required fields (e.g. Severity, Environment), generate with all fields (quote so the shell does not expand `*`):
 
 ```bash
-acli jira workitem create --generate-json --fields *all > /tmp/workitem-template.json
+acli jira workitem create --generate-json --fields '*all' > /tmp/workitem-template.json
 ```
 
 Review the template. For required select/dropdown fields, use the create metadata API and allowedValues as in the Field reference.
 
 ### Step 5: Build work item JSON
 
-Create a JSON file with the work item details. Include parent, component, and required/custom fields using the formats in the Field reference. For rich descriptions use Atlassian Document Format (ADF). Basic ADF structure:
+Create a JSON file with the work item details. Include parent and required/custom fields using the formats in the Field reference (required custom fields go in **additionalAttributes**). Do not include `components` in the create JSON; acli rejects it. Set the component after create via REST (see Component in Field reference). For rich descriptions use Atlassian Document Format (ADF). Basic ADF structure:
 
 ```json
 {
@@ -130,7 +130,11 @@ acli jira workitem create --from-json "/path/to/workitem.json"
 
 Capture the work item key from the output.
 
-### Step 8: Share the result
+### Step 8: Set component if needed
+
+If the issue must have a Jira component (e.g. the repo's Compass component), set it via REST after create: `PUT /rest/api/3/issue/[WORK_ITEM_KEY]` with body `{"fields": {"components": [{"id": "<component_id>"}]}}`. Get the component id from a reference issue (see Component in Field reference).
+
+### Step 9: Share the result
 
 Share the link: `https://[SITE].atlassian.net/browse/[WORK_ITEM_KEY]` as a clickable URL.
 
@@ -157,7 +161,7 @@ For bulk updates use `--key` or `--jql`. Use `--ignore-errors` to continue when 
 
 **Edit fields (summary, description, type, labels, assignee):** `acli jira workitem edit --key "KEY-1,KEY-2" --summary "New summary" --type "Bug"`. Common flags: `--summary`, `--description`, `--description-file`, `--type`, `--assignee`, `--labels`, `--remove-labels`, `--remove-assignee`. Use `--generate-json` then `--from-json path/to.json` to apply edits from JSON.
 
-**Custom fields, parent, component:** Not exposed as acli flags. Use edit with a JSON payload. See Field reference above for formats and discovery. Build edit JSON with the fields to change (e.g. `"parent": { "key": "PARENT_KEY" }`, `"components": [ { "id": "<component_id>" } ]`, or `"customfield_XXXXX": { "value": "..." }`). Apply: `acli jira workitem edit --key "KEY-1,..." --from-json path/to/edit.json --yes`. To see current values: `acli jira workitem view KEY-1 --json --fields *all`.
+**Custom fields, parent:** Not exposed as acli flags. Use edit with a JSON payload. See Field reference above for formats and discovery. Build edit JSON with the fields to change (e.g. `"parent": { "key": "PARENT_KEY" }` or `"customfield_XXXXX": { "value": "..." }`). When using `--from-json`, the file must include `"issues": ["KEY-1", "KEY-2"]`; you cannot combine `--key` with `--from-json`. Apply: `acli jira workitem edit --from-json path/to/edit.json --yes`. **Component:** acli edit does not accept `components` in the JSON; set components via REST `PUT /rest/api/3/issue/{key}` with body `{"fields": {"components": [{"id": "<component_id>"}]}}`. To see current values: `acli jira workitem view KEY-1 --json --fields '*all'`.
 
 ### Changing issue type when workflows differ (status mapping)
 
@@ -196,9 +200,9 @@ acli `workitem edit --summary "X"` sets the same summary for all keys. To change
 
 ### Example: Convert multiple issues to Bug and set Component
 
-1. Determine where component is stored: view a reference issue with the repo's Compass component (`acli jira workitem view REF_KEY --json --fields *all`). If it's the **components** field (array with `id`, `name`, `ari`), use that; otherwise find the custom field name.
-2. Standard **components** field: get component id from reference. For many issues use bulk edit API (above) with numeric `componentId`. For acli edit use JSON `{ "components": [ { "id": "<component_id>" } ] }`.
-3. Custom component field: get field ID (e.g. `get-field-details.py "Component"`) and value format; get component name (e.g. `get-component-by-repo.py`). Edit JSON: `{ "customfield_12345": { "value": "Name" } }`.
+1. Determine where component is stored: view a reference issue with the repo's Compass component (`acli jira workitem view REF_KEY --json --fields '*all'`). If it's the **components** field (array with `id`, `name`, `ari`), use that; otherwise find the custom field name.
+2. Standard **components** field: get component id from reference. For many issues use bulk edit API (above) with numeric `componentId`. For one or a few issues use REST: `PUT /rest/api/3/issue/{key}` with body `{"fields": {"components": [{"id": "<component_id>"}]}}`. Do not use acli edit with `"components"` in the JSON; acli does not support it.
+3. Custom component field: get field ID (e.g. `get-field-details.py "Component"`) and value format; get component name (e.g. `get-component-by-repo.py`). Edit JSON: `{ "issues": ["KEY-1"], "customfield_12345": { "value": "Name" } }` and apply with `acli jira workitem edit --from-json edit.json --yes`.
 4. For acli edit with JSON, the file must contain the `issues` array; acli does not allow both `--key` and `--from-json`. Run `acli jira workitem edit --from-json edit.json --yes`. Use `--ignore-errors` to continue when some keys fail.
 
 ---
@@ -211,13 +215,14 @@ acli `workitem edit --summary "X"` sets the same summary for all keys. To change
 
 ## Error handling (create)
 
-If creation fails: check the error message; common issues include missing required fields, invalid project key, permission, invalid ADF, or expired auth. Display the error, suggest corrective action, and offer to retry.
+If creation fails: check the error message. Common issues include missing required fields (e.g. "Severity is required., Environment is required."), invalid project key, permission, invalid ADF, or expired auth. For required-field errors, use the create metadata API for that project and issue type to get the required field IDs and add them to **additionalAttributes** in the create JSON (see Required and custom fields). Display the error, suggest corrective action, and offer to retry.
 
 ---
 
 ## Important notes
 
-- Use `--fields *all` when generating templates or viewing work items to include custom and required fields.
+- Use `--fields '*all'` (quoted) when generating templates or viewing work items to include custom and required fields; unquoted `*all` can be expanded by the shell.
+- **Component:** acli create and acli edit do not support the `components` field; set it after create (or for edits) via Jira REST API.
 - For required or custom fields where the value is not obvious, use the Field reference (createmeta, allowedValues) or prompt the user.
 - When changing issue type or status, if the correct target workflow state is unclear, prompt the user.
 - Keep JSON files in /tmp or a user-approved location; clean up after use.

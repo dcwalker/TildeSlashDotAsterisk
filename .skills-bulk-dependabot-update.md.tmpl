@@ -16,11 +16,15 @@ Use this skill when the user wants to:
 
 ## Instructions
 
-Please start by reviewing the AGENTS.md and CONTRIBUTING.md files. Then run `scripts/list-dependabot-prs.sh --help` to understand how the script works.
+Please start by reviewing the AGENTS.md and CONTRIBUTING.md files.
 
-Next, run `scripts/list-dependabot-prs.sh` with no options to list all of the open PRs in this repo from Dependabot.
+**Finding the script:** Look for `list-dependabot-prs.sh` in the repository (for example under `scripts/` or the project root). If it is not present in the repo, try running it by name (e.g. `list-dependabot-prs.sh`) in case it is installed on the user's PATH. Do not assume a fixed path; paths vary by environment.
 
-If the script fails or returns an error, stop and report the issue before proceeding.
+Once located, run the script with `--help` to understand how it works (e.g. `scripts/list-dependabot-prs.sh --help` or `list-dependabot-prs.sh --help`).
+
+Next, run the script with no options to list all of the open PRs in this repo from Dependabot.
+
+If the script cannot be found or returns an error, stop and report the issue before proceeding.
 
 If there are no open Dependabot PRs, report that to the user.
 
