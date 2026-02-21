@@ -1,0 +1,95 @@
+---
+name: review-readme
+description: Thoroughly review and update the README.md document to remove duplicates, verify accuracy against the codebase, and align with documentation guidelines. Use when the user wants to audit, clean up, or improve a README.
+---
+
+# Review README
+
+Thoroughly review the README.md, remove duplicate content, verify all content against the codebase, and align the document with the project's documentation guidelines. Make all necessary edits and leave the README accurate, non-redundant, and properly structured.
+
+## When to Use
+
+Use this skill when:
+- The user asks to review, audit, clean up, or improve a README
+- The README may be out of date with the current codebase
+- The README contains duplicate or redundant sections
+- The README needs to follow project documentation standards
+
+## Instructions
+
+### Phase 1: Read the documentation guidelines
+
+Before reviewing the README, read the project's documentation standards so you know what to enforce.
+
+1. Read **AGENTS.md** in the project root, if it exists. Note any rules about documentation: what must be documented, how to format it, what to avoid.
+
+2. Read the **"Documentation" section of CONTRIBUTING.md** in the project root, if it exists. Note style rules, required sections, layout conventions, heading levels, tone, and any explicit do/don't rules.
+
+3. If neither file exists, proceed with general best-practice documentation standards (clear headings, no duplicate content, accurate commands and paths, consistent formatting).
+
+### Phase 2: Read and audit the README
+
+Read the entire README.md from top to bottom.
+
+1. **Identify duplicate content**: Note any sections, paragraphs, or examples that repeat information already covered elsewhere in the document.
+
+2. **Verify commands and code blocks**: For every shell command, script path, file path, and flag shown in the README, verify it against the codebase:
+   - Check that referenced files and scripts exist at the stated paths.
+   - Check that commands match the actual tooling (e.g., correct package manager, correct script names in package.json).
+   - Note any commands or paths that are stale, incorrect, or no longer applicable.
+
+3. **Verify setup sections**: For any section covering installation, prerequisites, configuration, or getting started:
+   - Verify that every listed prerequisite (tool, runtime, package manager, environment variable, etc.) is still required and that any stated versions are current.
+   - Verify that installation steps are complete and in the correct order — trace through them against the codebase and any install/config scripts.
+   - Verify that required environment variables, config files, or credentials are fully listed and correctly described.
+   - Flag any steps that are missing, out of order, or reference tooling that is no longer used.
+
+4. **Verify visual content**: For any diagrams, screenshots, or architecture visuals:
+   - Verify that the diagram accurately reflects the current structure or flow (e.g., directory trees match actual directories, flow charts match actual logic).
+   - Flag any visuals that are outdated or inconsistent with the codebase.
+
+5. **Check structure and layout**: Compare the document's structure against the guidelines identified in Phase 1:
+   - Heading hierarchy (H1/H2/H3 usage)
+   - Required sections (e.g., prerequisites, installation, usage, contributing)
+   - Prohibited content (e.g., implementation details that belong in code comments)
+   - Tone and voice
+
+6. **Identify gaps**: Examine the codebase for features, configuration, commands, or behaviors that exist but are not documented in the README. These gaps must be filled.
+
+7. **Identify unlinked documentation**: Check for documentation files that exist but are not linked from the README:
+   - List all Markdown files (`.md`) in the project root that are peers of the README (e.g., `CONTRIBUTING.md`, `CHANGELOG.md`, `ARCHITECTURE.md`).
+   - List all files in the `docs/` directory, if one exists.
+   - For each file found, check whether the README contains a link to it. Flag any that are missing a link.
+
+8. **List all findings** before making any changes: duplicates, inaccuracies, structural violations, content that is missing from the README but exists in the codebase, unlinked documentation files, and any content missing but required by guidelines.
+
+### Phase 3: Update the README
+
+Apply all necessary changes in a single pass:
+
+1. **Remove duplicates**: Delete or consolidate repeated content. Prefer keeping the more complete or better-placed instance.
+
+2. **Fix inaccurate content**: Update stale commands, paths, flags, and descriptions to match the current codebase.
+
+3. **Update visuals**: Correct any diagrams or directory trees that no longer accurately reflect the codebase.
+
+4. **Fix structure**: Reorder, add, or remove sections to match the layout and style required by the documentation guidelines.
+
+5. **Add missing content**: Document anything that exists in the codebase but is absent from the README. Every feature, command, configuration option, or behavior that a user needs to know about must be documented. Only add content that is verifiably true based on the codebase — do not add speculative content, general advice, or padding.
+
+6. **Link unlinked documentation**: Add links in the README to any Markdown files in the project root or `docs/` directory that are not already linked. Place each link in the most contextually relevant section; if no section is a clear fit, add or use a "Documentation" section.
+
+### Phase 4: Report changes
+
+After updating, provide a concise summary:
+
+- List each change made and why (e.g., "Removed duplicate installation steps in §3 — already covered in §1", "Updated script path from `scripts/old.sh` to `scripts/new.sh` — verified against codebase").
+- Note any issues found but not fixed, with the reason (e.g., "Diagram in §2 appears outdated but the correct state could not be determined from the codebase alone — flagged for manual review").
+- If no changes were needed, say so explicitly.
+
+## Quality Rules
+
+- Do not assume content is accurate — verify everything against the codebase.
+- Add content that is missing but verifiably present in the codebase. Omissions are bugs, not safe defaults.
+- Preserve the author's tone and writing style when rewriting for accuracy.
+- Ask the user for guidance if you find an issue that cannot be resolved from the codebase alone.
