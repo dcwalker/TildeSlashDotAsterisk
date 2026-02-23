@@ -1,0 +1,43 @@
+---
+name: create-branch
+description: Create a git branch named with the issue key and a short, slugified title or summary of the work. Use when the user wants to start work on an issue or create a branch for a Jira/GitHub work item.
+---
+
+# Create Branch
+
+Create a new git branch whose name starts with the issue key followed by a concise, slugified title or summary of the issue or work item. Keep the total branch name length within the usual PR title length (about 60–72 characters) so it can serve as the default PR title.
+
+## When to Use
+
+Use this skill when:
+
+- The user wants to create a branch for an issue or work item
+- The user asks to start work on a Jira ticket or GitHub issue and need a branch
+- You need to name a branch from an issue key and description
+
+## Instructions
+
+1. **Get the issue key and title/summary**
+   - If the user provided an issue key (e.g. Jira W00T-1234, or GitHub issue number), use it.
+   - If there is a Jira or GitHub work item in context, use its key and summary or title.
+   - If the key or title is missing, ask the user or look up the work item (e.g. via acli, gh, or plan-from-work-item skill).
+
+2. **Build the branch name**
+   - Start with the issue key (e.g. `W00T-1234` or `123` for a GitHub issue). Use a consistent format (e.g. `gh-123` if the repo uses that pattern).
+   - Append a single hyphen, then a slugified version of the title or summary:
+     - Lowercase.
+     - Replace spaces and underscores with hyphens.
+     - Remove or replace characters that are invalid or awkward in branch names (e.g. strip most punctuation; keep hyphens and alphanumeric).
+     - Collapse multiple hyphens into one.
+     - Trim leading/trailing hyphens.
+
+3. **Shorten the title part to fit length**
+   - Keep the full branch name within about 60–72 characters so it fits typical PR title length.
+   - If the slugified title is too long, truncate the title portion (after the issue key and hyphen) to fit. Prefer keeping the most meaningful words (e.g. drop trailing words or abbreviate rather than cutting mid-word if possible).
+
+4. **Create the branch**
+   - Ensure you are on the correct base branch (e.g. `main` or `master`) and it is up to date if the user expects that.
+   - Run: `git checkout -b <branch-name>`.
+   - Confirm the branch was created and report the branch name to the user.
+
+If the user prefers a different naming pattern (e.g. issue key only, or a different max length), follow their preference.

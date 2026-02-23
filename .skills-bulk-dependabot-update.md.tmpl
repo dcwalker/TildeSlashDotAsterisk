@@ -30,7 +30,7 @@ If there are no open Dependabot PRs, report that to the user.
 
 Review the Dependabot PRs and follow this workflow:
 
-1. For each Dependabot PR, identify what needs to be updated:
+1. For each Dependabot PR, identify what needs to be updated (see CONTRIBUTING.md "Dependencies" for how to handle direct vs transitive updates):
    - If the PR updates a direct dependency (listed in package.json), note the package name and target version.
    - If the PR updates an indirect dependency (transitive dependency not in package.json), identify which direct dependency in package.json needs to be updated to bring in the newer transitive version.
 
@@ -40,8 +40,7 @@ Review the Dependabot PRs and follow this workflow:
    - Present the plan to the user for review before proceeding.
 
 3. After plan approval, update the package.json file(s):
-   - Update each direct dependency to the appropriate version.
-   - DO NOT add new dependencies.
+   - Update each direct dependency to the appropriate version; do not add new direct dependencies.
    - The goal is to create a bulk update that supersedes multiple individual Dependabot PRs, which is faster than approving and merging each PR individually.
 
 4. Run `yarn install` (or the appropriate package manager command) to update the lock file.

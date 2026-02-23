@@ -1,3 +1,5 @@
 .shell_common
 .zprofile
 .eslintrc.json
+scripts/list-ghas-issues.py
+scripts/list-sonar-issues.py

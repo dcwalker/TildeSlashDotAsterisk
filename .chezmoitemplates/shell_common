@@ -15,6 +15,11 @@ export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit
 [ -d "$HOME/.local/bin" ] && PATH="$HOME/.local/bin:$PATH"
 [ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
 [ -d "$HOME/scripts" ] && PATH="$HOME/scripts:$PATH"
+# Skill script dirs (cursor, claude, codex) so scripts in skills/*/scripts are executable by name
+for _skill_scripts in "$HOME/.cursor/skills/"*/scripts "$HOME/.claude/skills/"*/scripts "$HOME/.codex/skills/"*/scripts; do
+  [ -d "$_skill_scripts" ] && PATH="$_skill_scripts:$PATH"
+done
+unset _skill_scripts
 export PATH
 
 # CDPATH - quickly cd into common directories (only add those that exist)
