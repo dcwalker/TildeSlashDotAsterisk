@@ -29,6 +29,8 @@ COLOR_HOME = "\033[34m"
 COLOR_CURSOR = "\033[36m"
 COLOR_CLAUDE = "\033[33m"
 COLOR_CODEX = "\033[35m"
+# Script lines
+COLOR_SCRIPT = "\033[90m"
 
 # Skill directory names (agent config dirs under home)
 CURSOR_SUBDIR = ".cursor"
@@ -64,6 +66,14 @@ def find_project_skills_root(cwd: Optional[Path] = None, home: Optional[Path] = 
     return None
 
 
+def get_skill_scripts(skill_dir: Path) -> List[str]:
+    """Return sorted list of script filenames in a skill's scripts/ subdirectory."""
+    scripts_dir = skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+    return sorted(entry.name for entry in scripts_dir.iterdir() if entry.is_file())
+
+
 def list_skill_dirs(base: Path) -> List[Tuple[str, Path]]:
     """List (skill_name, skill_path) for each skill under base/skills (base is e.g. .cursor or .claude)."""
     skills_base = base / "skills"
@@ -82,36 +92,37 @@ def list_skill_dirs(base: Path) -> List[Tuple[str, Path]]:
 def collect_all_skills(
     project_root: Optional[Path],
     home: Path,
-) -> List[Tuple[str, str, str]]:
-    """Collect (skill_name, source, agent) for every skill. source in ('project', 'home'), agent in ('cursor', 'claude', 'codex')."""
-    out: List[Tuple[str, str, str]] = []
+) -> List[Tuple[str, str, str, List[str]]]:
+    """Collect (skill_name, source, agent, scripts) for every skill. source in ('project', 'home'), agent in ('cursor', 'claude', 'codex')."""
+    out: List[Tuple[str, str, str, List[str]]] = []
 
     if project_root is not None:
         cursor_skills = project_root / CURSOR_SUBDIR
-        for name, _ in list_skill_dirs(cursor_skills):
-            out.append((name, "project", "cursor"))
+        for name, path in list_skill_dirs(cursor_skills):
+            out.append((name, "project", "cursor", get_skill_scripts(path)))
 
     for agent, subdir in [("cursor", CURSOR_SUBDIR), ("claude", ".claude"), ("codex", ".codex")]:
         base = home / subdir
-        for name, _ in list_skill_dirs(base):
-            out.append((name, "home", agent))
+        for name, path in list_skill_dirs(base):
+            out.append((name, "home", agent, get_skill_scripts(path)))
 
     return out
 
 
 def aggregate_by_skill(
-    rows: List[Tuple[str, str, str]],
-) -> List[Tuple[str, List[str], List[str]]]:
-    """Group by skill name; return (skill_name, sorted unique sources, sorted unique agents)."""
-    by_name: Dict[str, Tuple[set, set]] = {}
-    for name, source, agent in rows:
+    rows: List[Tuple[str, str, str, List[str]]],
+) -> List[Tuple[str, List[str], List[str], List[str]]]:
+    """Group by skill name; return (skill_name, sorted unique sources, sorted unique agents, sorted unique scripts)."""
+    by_name: Dict[str, Tuple[set, set, set]] = {}
+    for name, source, agent, scripts in rows:
         if name not in by_name:
-            by_name[name] = (set(), set())
+            by_name[name] = (set(), set(), set())
         by_name[name][0].add(source)
         by_name[name][1].add(agent)
+        by_name[name][2].update(scripts)
     return [
-        (name, sorted(sources), sorted(agents))
-        for name, (sources, agents) in sorted(by_name.items())
+        (name, sorted(sources), sorted(agents), sorted(script_set))
+        for name, (sources, agents, script_set) in sorted(by_name.items())
     ]
 
 
@@ -140,7 +151,7 @@ def colorize_agents(agents: List[str], use_color: bool) -> str:
 
 
 def run_text(
-    aggregated: List[Tuple[str, List[str], List[str]]],
+    aggregated: List[Tuple[str, List[str], List[str], List[str]]],
     use_color: bool,
     project_root: Optional[Path],
 ) -> None:
@@ -148,7 +159,7 @@ def run_text(
     sources_label = "Source(s)"
     agents_label = "Agent(s)"
     name_label = "Skill"
-    max_name = max(len(name_label), max(len(n) for n, _, _ in aggregated)) if aggregated else len(name_label)
+    max_name = max(len(name_label), max(len(n) for n, _, _, _ in aggregated)) if aggregated else len(name_label)
     # Pad using plain text length; colored text may be longer
     plain_sources = ", ".join
     plain_agents = ", ".join
@@ -158,7 +169,7 @@ def run_text(
     header = f"  {name_label:<{max_name}}  {sources_label:<{max_sources}}  {agents_label}"
     print(header)
     print("  " + "-" * max_name + "  " + "-" * max_sources + "  " + "-" * max_agents)
-    for name, sources, agents in aggregated:
+    for name, sources, agents, scripts in aggregated:
         if use_color:
             src_str = ", ".join(colorize_source(s, True) for s in sources)
             ag_str = colorize_agents(agents, True)
@@ -167,6 +178,11 @@ def run_text(
             ag_str = plain_agents(agents)
         pad_src_len = max(0, max_sources - len(plain_sources(sources)))
         print(f"  {name:<{max_name}}  {src_str}{' ' * pad_src_len}  {ag_str}")
+        for script in scripts:
+            if use_color:
+                print(f"    {COLOR_SCRIPT}↳  {script}{RESET}")
+            else:
+                print(f"    ↳  {script}")
     if project_root is not None:
         print()
         print(f"  Project root: {project_root}")
@@ -174,7 +190,7 @@ def run_text(
 
 
 def run_json(
-    aggregated: List[Tuple[str, List[str], List[str]]],
+    aggregated: List[Tuple[str, List[str], List[str], List[str]]],
     project_root: Optional[Path],
 ) -> None:
     """Output JSON array of skill objects."""
@@ -183,8 +199,8 @@ def run_json(
     data = {
         "project_root": str(project_root) if project_root else None,
         "skills": [
-            {"name": name, "sources": sources, "agents": agents}
-            for name, sources, agents in aggregated
+            {"name": name, "sources": sources, "agents": agents, "scripts": scripts}
+            for name, sources, agents, scripts in aggregated
         ],
     }
     print(json.dumps(data, indent=2))
