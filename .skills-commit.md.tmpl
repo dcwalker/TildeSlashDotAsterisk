@@ -33,13 +33,24 @@ Before committing, follow this workflow:
    - For Jira projects: use the `acli` command line tool. Run `acli jira workitem --help` for usage information.
    - For GitHub projects: use the `gh` command line tool (e.g., `gh issue view <number>`).
 
-4. Create the commit message following the format:
+4. **Check that the code builds and passes syntax checks**
+   - If the project has a build step, run it (e.g. `npm run build`, `make`, `go build ./...`).
+   - If there are linters or syntax checks configured (e.g. `npm run lint`, `eslint`, `ruff check`), run them.
+   - If the build or syntax checks **pass**: proceed normally.
+   - If they **fail**:
+     - Attempt to fix the errors.
+     - If the errors cannot be fixed quickly, ask the user whether to skip and commit anyway.
+     - If the user agrees to skip: prefix the commit message subject with `WIP: ` and add a short note in the commit body describing the build or syntax errors (e.g. "Build failing: …", "Lint errors in foo.ts: …"). Inform the user that the commit is marked WIP.
+     - If the user does not agree to skip, do not commit.
+   - If no build or lint commands are identifiable for the project, skip this step.
+
+5. Create the commit message following the format:
    - Prefix: If an issue or ticket ID is derivable from the branch name (e.g., `PROJECT-123` from `PROJECT-123-feature-description`, or `#42` from `42-fix-login`), prefix the commit message with it (e.g., `[PROJECT-123] ...` or `#42 ...`). If it is not clear whether there is an associated ticket or work item, ask the user whether to include one and what format to use.
    - Description: Clear, professional description of what changed and why.
 
-5. Commit the changes.
+6. Commit the changes.
 
-6. If the commit fails (pre-commit hooks, validation errors, etc.):
+7. If the commit fails (pre-commit hooks, validation errors, etc.):
    - Review the error message.
    - Fix any issues raised by hooks or validation.
    - Retry the commit.
