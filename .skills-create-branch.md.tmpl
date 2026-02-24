@@ -18,12 +18,12 @@ Use this skill when:
 ## Instructions
 
 1. **Get the issue key and title/summary**
-   - If the user provided an issue key (e.g. Jira W00T-1234, or GitHub issue number), use it.
+   - If the user provided an issue key (e.g. a Jira key like `PROJ-123`, or a GitHub issue number), use it.
    - If there is a Jira or GitHub work item in context, use its key and summary or title.
    - If the key or title is missing, ask the user or look up the work item (e.g. via acli, gh, or plan-from-work-item skill).
 
 2. **Build the branch name**
-   - Start with the issue key (e.g. `W00T-1234` or `123` for a GitHub issue). Use a consistent format (e.g. `gh-123` if the repo uses that pattern).
+   - Start with the issue key (e.g. `PROJ-123` for Jira or `123` for a GitHub issue). Use a consistent format (e.g. `gh-123` if the repo uses that pattern).
    - Append a single hyphen, then a slugified version of the title or summary:
      - Lowercase.
      - Replace spaces and underscores with hyphens.
@@ -39,5 +39,27 @@ Use this skill when:
    - Ensure you are on the correct base branch (e.g. `main` or `master`) and it is up to date if the user expects that.
    - Run: `git checkout -b <branch-name>`.
    - Confirm the branch was created and report the branch name to the user.
+
+5. **Publish the branch to origin**
+   - Check if an `origin` remote is configured: `git remote get-url origin`.
+   - If origin exists, verify connectivity by running: `git ls-remote --exit-code origin HEAD`.
+   - If both checks pass, push the branch: `git push -u origin <branch-name>`.
+   - Note the remote URL (e.g. `https://github.com/<owner>/<repo>`) for use in the comment below.
+   - If no origin or no connectivity, skip silently — do not treat this as an error.
+
+6. **Comment on the linked ticket/issue**
+   - Only do this step if the branch is associated with a Jira ticket or GitHub issue key.
+   - Construct the branch URL:
+     - **GitHub repo**: `https://github.com/<owner>/<repo>/tree/<branch-name>` (derive owner/repo from the origin remote URL).
+     - **Jira ticket with GitHub repo**: use the same GitHub branch URL.
+   - **Jira ticket** (e.g. `PROJ-123`): add a comment using `acli`:
+     ```
+     acli jira --action addComment --issue <ISSUE-KEY> --comment "Branch created: [<branch-name>|<branch-url>]"
+     ```
+   - **GitHub issue** (e.g. `#123`): add a comment using `gh`:
+     ```
+     gh issue comment <issue-number> --body "Branch created: [<branch-name>](<branch-url>)"
+     ```
+   - If commenting fails (e.g. no auth, wrong project), warn the user but do not abort.
 
 If the user prefers a different naming pattern (e.g. issue key only, or a different max length), follow their preference.
