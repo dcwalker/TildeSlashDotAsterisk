@@ -1,0 +1,120 @@
+---
+name: update-catalog-info
+description: Update catalog-info.yaml with accurate description, links, owner, and tags. Use when updating catalog-info, creating catalog descriptors, or maintaining software catalog metadata.
+---
+
+# Update Catalog-Info
+
+Update a `catalog-info.yaml` file with an accurate description, required links (issue tracking, chat, README), validated owner, and appropriate tags.
+
+## Reference Documentation
+
+Always consult the official Backstage descriptor format when editing catalog-info:
+
+- [Backstage Descriptor Format](https://backstage.io/docs/features/software-catalog/descriptor-format/)
+
+## When to Use
+
+- User asks to update, create, or improve catalog-info.yaml
+- Catalog descriptor may be out of date with the codebase
+- Owner, links, or tags need validation or refresh
+
+## Instructions
+
+### Phase 1: Review the Codebase
+
+Review the repository to understand the scope of code covered by the catalog-info. The goal is to be able to describe this project's intended customer or user, what the purpose of the project is, and its scope.
+
+1. Read README.md, AGENTS.md, CONTRIBUTING.md, and any other documentation in the project (if present) for context.
+2. Examine the directory structure, package.json (or equivalent), and key source files.
+3. Identify: primary languages, platform/runtime, vendor tools, and alternative names for the application.
+
+### Phase 2: Write the Description
+
+Write a description for readers with no prior knowledge. The description must:
+
+- Explain what the software is and what it does in plain terms
+- Identify the customer or consumer (who uses it, who benefits)
+- List key features in customer terms (what can they do with it)
+- Define key terms and acronyms on first use
+- If the repo is a monorepo, note that in the description and add an appropriate label; include details about all apps, projects, and tools in the repo
+
+Example acronyms to define when relevant: AWS (Amazon Web Services), CLI (Command-Line Interface), MFE (Micro Frontend), SDK (Software Development Kit), TTL (Time To Live).
+
+### Phase 3: Validate Issue Tracking Link via Git History
+
+Every catalog-info must include a link to the corresponding issue tracking project in `metadata.links`. Use git history to identify the correct project when commit messages reference issue IDs:
+
+1. Run: `git log -1000 --pretty=format:"%s" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | sort | uniq -c | sort -rn`
+2. The most frequent project prefix indicates the issue tracking project.
+3. Share the git history findings with the user as evidence.
+4. Prompt the user to validate that the issue tracking link in catalog-info is correct.
+
+If no issue IDs appear in history, ask the user for the correct issue tracking project URL. Add the URL to `metadata.links` with `icon: developerBoard` when supported.
+
+### Phase 4: Validate Owner via GitHub Team Script
+
+The owner in `spec.owner` must be a valid GitHub team with members. Use the included script:
+
+```bash
+python3 scripts/github-team-info.py --org ORG --team-slug TEAM_SLUG
+```
+
+Replace ORG with the GitHub organization (e.g. from `github.com/project-slug` annotation or git remote). Replace TEAM_SLUG with the value from `spec.owner`.
+
+- If the script returns team metadata and members, the owner is valid.
+- If the script fails (no team found, no members), report the error and ask the user to correct the owner.
+
+Prerequisites: `gh` CLI or `GITHUB_TOKEN` with read:org scope.
+
+### Phase 5: Required Links
+
+Ensure catalog-info includes these links under `metadata.links`:
+
+- **README**: Link to the repo's README (e.g. `https://github.com/org/repo/blob/main/README.md`)
+- **Chat**: URL to the team or project chat channel
+
+Use `icon: chat` for the chat link when supported. Prompt the user to validate that the chat link is correct.
+
+### Phase 6: Add Appropriate Tags
+
+Add tags based on codebase analysis. Recommended tag categories:
+
+- **Languages**: e.g. typescript, python, go, java
+- **Platform**: e.g. node, forge, serverless, kubernetes
+- **Vendor tools**: e.g. atlassian, compass, databricks
+- **Alternative names**: Common aliases or internal names for the application
+
+Use lowercase, hyphenated values. Overlap with the description is fine; tags can call out or highlight important elements.
+
+### Phase 7: Apply Changes
+
+Update catalog-info.yaml with:
+
+- Accurate `metadata.description` (from Phase 2)
+- `metadata.links` including issue tracking link (from Phase 3), chat link (from Phase 5), and README link (from Phase 5)
+- Validated `spec.owner` (from Phase 4)
+- Appropriate `metadata.tags` (from Phase 6)
+
+Check existing data for accuracy: remove inaccurate details, verify links are not broken (if you cannot access a link, ask the user to confirm it is still valid), and ensure tags reflect the current codebase (e.g. remove tags for languages no longer used). Preserve accurate annotations, labels, and other metadata. Tidy up: sort lists alphabetically, fix spelling and grammar, and proofread for readability. Check linters after applying changes.
+
+## Scripts
+
+**github-team-info.py**: Validates that the owner is a valid GitHub team with members.
+
+```bash
+python3 scripts/github-team-info.py --org ORG --team-slug TEAM_SLUG
+```
+
+The script is at `scripts/github-team-info.py` relative to this skill's directory (e.g. ~/.cursor/skills/update-catalog-info/scripts/github-team-info.py).
+
+## Summary Checklist
+
+- [ ] Description written for readers with no prior knowledge
+- [ ] Customer/consumer and key features identified
+- [ ] Acronyms defined on first use
+- [ ] Issue tracking link identified from git history and validated by user
+- [ ] Chat link validated by user
+- [ ] Owner validated via github-team-info.py (team exists, has members)
+- [ ] Tags added: languages, platform, vendor tools, alternative names
+- [ ] Links include issue tracking, chat, and README
