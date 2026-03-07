@@ -19,12 +19,24 @@ Use this skill when:
 
 Please start by reviewing the AGENTS.md and CONTRIBUTING.md files for project conventions.
 
-Next, review the script's help content by running `scripts/list-pr-comments.sh --help` to understand all available options.
+This skill uses the `list-pr-comments.sh` script. It lives at:
+
+```
+~/.cursor/skills/address-pr-comments/scripts/list-pr-comments.sh
+```
+
+It is also available in your PATH as `list-pr-comments.sh`. Use the PATH form for all commands below.
+
+Review the script's help content first:
+
+```bash
+list-pr-comments.sh --help
+```
 
 Then, use the script to fetch and review all unresolved GitHub PR comments for this branch's PR:
 
 ```bash
-scripts/list-pr-comments.sh
+list-pr-comments.sh
 ```
 
 For each unresolved comment, follow the appropriate workflow below:
@@ -45,12 +57,12 @@ If the comment identifies a valid issue that needs to be addressed:
 
 4. Reply to the PR comment with "Addressed in [SHA]." using:
    ```bash
-   scripts/list-pr-comments.sh --reply <comment-id> "Addressed in [SHA]."
+   list-pr-comments.sh --reply <comment-id> "Addressed in [SHA]."
    ```
 
 5. Resolve the comment using:
    ```bash
-   scripts/list-pr-comments.sh --resolve <comment-id>
+   list-pr-comments.sh --resolve <comment-id>
    ```
 
 ### Workflow 2: Issue Already Fixed
@@ -63,12 +75,12 @@ If the issue was previously addressed:
 
 3. Reply to the PR comment with "Addressed in [SHA]." using:
    ```bash
-   scripts/list-pr-comments.sh --reply <comment-id> "Addressed in [SHA]."
+   list-pr-comments.sh --reply <comment-id> "Addressed in [SHA]."
    ```
 
 4. Resolve the comment using:
    ```bash
-   scripts/list-pr-comments.sh --resolve <comment-id>
+   list-pr-comments.sh --resolve <comment-id>
    ```
 
 ### Workflow 3: Invalid or Not Applicable Comment
@@ -79,12 +91,12 @@ If the comment is not valid or not applicable:
 
 2. Reply to the PR comment with your explanation using:
    ```bash
-   scripts/list-pr-comments.sh --reply <comment-id> "Your explanation here"
+   list-pr-comments.sh --reply <comment-id> "Your explanation here"
    ```
 
 3. Resolve the comment using:
    ```bash
-   scripts/list-pr-comments.sh --resolve <comment-id>
+   list-pr-comments.sh --resolve <comment-id>
    ```
 
 ## Important Notes
