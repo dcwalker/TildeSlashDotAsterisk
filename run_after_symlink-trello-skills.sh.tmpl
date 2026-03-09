@@ -1,0 +1,51 @@
+#!/bin/bash
+# Symlink trello-tools skills into all three AI agent skills directories
+# and ensure the package is installed.
+# Runs after chezmoi apply so symlinks are recreated after exact_ cleanup.
+
+set -euo pipefail
+
+DEV_REPO="$HOME/code/trello-tools"
+SHARE_REPO="$HOME/.local/share/trello-tools"
+
+if [ -d "$DEV_REPO" ]; then
+    TRELLO_REPO="$DEV_REPO"
+    PIP_FLAGS="-e"
+    # Clean up the shared clone if the dev repo is now present
+    if [ -d "$SHARE_REPO" ]; then
+        rm -rf "$SHARE_REPO"
+    fi
+else
+    TRELLO_REPO="$SHARE_REPO"
+    PIP_FLAGS=""
+fi
+
+TRELLO_SKILLS="$TRELLO_REPO/skills"
+SKILLS_DIRS=(
+    "$HOME/.claude/skills"
+    "$HOME/.cursor/skills"
+    "$HOME/.codex/skills"
+)
+
+if [ ! -d "$TRELLO_SKILLS" ]; then
+    echo "trello-tools skills not found at $TRELLO_SKILLS, skipping"
+    exit 0
+fi
+
+# Symlink each skill into all three directories
+for skills_dir in "${SKILLS_DIRS[@]}"; do
+    mkdir -p "$skills_dir"
+    for skill in "$TRELLO_SKILLS"/*/; do
+        skill_name="$(basename "$skill")"
+        target="$skills_dir/$skill_name"
+        # Remove stale symlink or skip if a real directory exists
+        if [ -L "$target" ]; then
+            rm "$target"
+        elif [ -d "$target" ]; then
+            continue
+        fi
+        ln -s "$skill" "$target"
+    done
+done
+
+pip install $PIP_FLAGS "$TRELLO_REPO" --quiet

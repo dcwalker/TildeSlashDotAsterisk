@@ -1,0 +1,8 @@
+{{- if not (stat (joinPath .chezmoi.homeDir "code/trello-tools")) }}
+[".local/share/trello-tools"]
+    type = "git-repo"
+    url = "git@github.com:dcwalker/trello-tools.git"
+    refreshPeriod = "24h"
+    [".local/share/trello-tools".pull]
+        args = ["--ff-only"]
+{{- end }}

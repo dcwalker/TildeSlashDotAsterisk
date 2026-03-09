@@ -1,0 +1,19 @@
+#!/bin/bash
+# Enable the scheduled update checker for this platform.
+
+set -euo pipefail
+
+{{ if eq .chezmoi.os "darwin" -}}
+PLIST="$HOME/Library/LaunchAgents/com.danwalker.update-check.plist"
+LABEL="com.danwalker.update-check"
+
+# Unload if already loaded (ignore errors if not loaded)
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+
+# Load the agent
+launchctl bootstrap "gui/$(id -u)" "$PLIST"
+{{ else -}}
+# Enable and start the systemd user timer
+systemctl --user daemon-reload
+systemctl --user enable --now update-check.timer
+{{ end -}}
