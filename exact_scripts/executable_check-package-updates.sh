@@ -28,7 +28,7 @@ check_npm() {
         if [ -n "$outdated_global" ]; then
             local count
             count=$(echo "$outdated_global" | wc -l | tr -d ' ')
-            echo "📦 $count global npm packages need updating (npm outdated -g && npm update -g)"
+            echo "📦 $count global npm packages need updating (npm outdated -g; npm update -g)"
         fi
     fi
 }
@@ -108,7 +108,7 @@ check_chezmoi() {
         if [ -n "$chezmoi_status" ]; then
             local count
             count=$(echo "$chezmoi_status" | wc -l | tr -d ' ')
-            echo "🏠 $count chezmoi dotfile changes pending (chezmoi diff to review, chezmoi apply to apply)"
+            echo "🏠 $count chezmoi dotfile changes pending (chezmoi apply --interactive)"
         fi
 
         local source_dir
@@ -118,7 +118,7 @@ check_chezmoi() {
             local behind
             behind=$(git -C "$source_dir" rev-list --count HEAD..@{u} 2>/dev/null) || true
             if [ -n "$behind" ] && [ "$behind" -gt 0 ]; then
-                echo "🏠 chezmoi repo is $behind commit(s) behind remote (chezmoi git pull && chezmoi diff to review, chezmoi apply to apply)"
+                echo "🏠 chezmoi repo is $behind commit(s) behind remote (chezmoi git pull && chezmoi apply --interactive)"
             fi
         fi
     fi
