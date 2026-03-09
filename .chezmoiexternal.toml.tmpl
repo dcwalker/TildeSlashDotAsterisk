@@ -6,3 +6,10 @@
     [".local/share/trello-tools".pull]
         args = ["--ff-only"]
 {{- end }}
+
+["code/personal-ai-and-coding-standards"]
+    type = "git-repo"
+    url = "git@github.com:dcwalker/personal-ai-and-coding-standards.git"
+    refreshPeriod = "2h"
+    ["code/personal-ai-and-coding-standards".pull]
+        args = ["--ff-only"]

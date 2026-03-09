@@ -161,6 +161,44 @@ check_dprint() {
     fi
 }
 
+check_external_repos() {
+    local repos=(
+        "$HOME/code/trello-tools"
+        "$HOME/.local/share/trello-tools"
+        "$HOME/code/personal-ai-and-coding-standards"
+    )
+
+    for repo in "${repos[@]}"; do
+        [ -d "$repo/.git" ] || continue
+        local name
+        name=$(basename "$repo")
+
+        # Check for uncommitted changes
+        local dirty
+        dirty=$(git -C "$repo" status --porcelain 2>/dev/null) || true
+        if [ -n "$dirty" ]; then
+            local count
+            count=$(echo "$dirty" | wc -l | tr -d ' ')
+            echo "📂 $name has $count uncommitted change(s) (cd $repo && git status)"
+        fi
+
+        # Check if behind remote
+        git -C "$repo" fetch --quiet 2>/dev/null || true
+        local behind
+        behind=$(git -C "$repo" rev-list --count HEAD..@{u} 2>/dev/null) || true
+        if [ -n "$behind" ] && [ "$behind" -gt 0 ]; then
+            echo "📂 $name is $behind commit(s) behind remote (cd $repo && git pull)"
+        fi
+
+        # Check if ahead of remote (unpushed commits)
+        local ahead
+        ahead=$(git -C "$repo" rev-list --count @{u}..HEAD 2>/dev/null) || true
+        if [ -n "$ahead" ] && [ "$ahead" -gt 0 ]; then
+            echo "📂 $name has $ahead unpushed commit(s) (cd $repo && git push)"
+        fi
+    done
+}
+
 # Run all checks, write to temp file, then atomically move into place
 {
     check_npm
@@ -170,6 +208,7 @@ check_dprint() {
     check_cargo
     check_mas
     check_chezmoi
+    check_external_repos
     check_rustup
     check_acli
     check_dprint
