@@ -32,6 +32,28 @@ if [ ! -d "$TRELLO_SKILLS" ]; then
     exit 0
 fi
 
+# Check if all symlinks already exist — exit early if nothing to do
+NEEDS_UPDATE=false
+for skills_dir in "${SKILLS_DIRS[@]}"; do
+    for skill in "$TRELLO_SKILLS"/*/; do
+        skill_name="$(basename "$skill")"
+        target="$skills_dir/$skill_name"
+        if [ ! -L "$target" ] && [ ! -d "$target" ]; then
+            NEEDS_UPDATE=true
+            break 2
+        fi
+    done
+done
+
+# Also check if the pip package is installed
+if ! python3 -c "import trello_tools" 2>/dev/null; then
+    NEEDS_UPDATE=true
+fi
+
+if [ "$NEEDS_UPDATE" = false ]; then
+    exit 0
+fi
+
 # Symlink each skill into all three directories
 for skills_dir in "${SKILLS_DIRS[@]}"; do
     mkdir -p "$skills_dir"
