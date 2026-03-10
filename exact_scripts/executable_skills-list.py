@@ -3,10 +3,10 @@
 List all skills available to the project (current working directory).
 
 Includes skills from the project's .cursor/skills (if present) and from the
-home directory (~/.cursor/skills, ~/.claude/skills, ~/.codex/skills). For each
-skill, shows source (project or home) and which agents have it (cursor, codex,
-claude). Color is used when output is a TTY and --no-color is not set; source
-and agents are always indicated by text labels so output is usable without color.
+home directory (~/.cursor/skills, ~/.cursor/skills-cursor, ~/.claude/skills,
+~/.codex/skills). For each skill, shows source (project or home), which agents
+have it (cursor, codex, claude), the description, and the "When to Use" trigger
+summary. Color is used when output is a TTY and --no-color is not set.
 
 Usage: skills-list.py [OPTIONS]
 Run with -h or --help for full usage information.
@@ -22,43 +22,67 @@ from typing import Any, Dict, List, Optional, Tuple
 # ANSI color codes (empty when color disabled)
 RESET = "\033[0m"
 BOLD = "\033[1m"
-# Source colors: project=green, home=blue
 COLOR_PROJECT = "\033[32m"
 COLOR_HOME = "\033[34m"
-# Agent colors (distinct)
 COLOR_CURSOR = "\033[36m"
 COLOR_CLAUDE = "\033[33m"
 COLOR_CODEX = "\033[35m"
-# Script lines
-COLOR_SCRIPT = "\033[90m"
+COLOR_META = "\033[90m"
+COLOR_DESC = "\033[37m"
+COLOR_WHEN = "\033[90m"
 
-# Skill directory names (agent config dirs under home)
 CURSOR_SUBDIR = ".cursor"
 
 
-def get_skill_name(skill_dir: Path) -> Optional[str]:
-    """Read skill name from SKILL.md frontmatter (name: ...) or use directory name."""
+def get_skill_info(skill_dir: Path) -> Optional[Dict[str, str]]:
+    """Read name, description, and When to Use from SKILL.md."""
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.is_file():
         return None
     try:
         text = skill_md.read_text(encoding="utf-8", errors="replace")
-        match = re.search(r"^name:\s*(\S.+?)\s*$", text, re.MULTILINE)
-        if match:
-            return match.group(1).strip()
-        return skill_dir.name
     except OSError:
-        return skill_dir.name
+        return None
+
+    name = skill_dir.name
+    description = ""
+    when_to_use = ""
+
+    # Parse YAML frontmatter
+    fm_match = re.match(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
+    if fm_match:
+        fm = fm_match.group(1)
+        name_match = re.search(r"^name:\s*(.+)$", fm, re.MULTILINE)
+        if name_match:
+            name = name_match.group(1).strip()
+        desc_match = re.search(r"^description:\s*(.+)$", fm, re.MULTILINE)
+        if desc_match:
+            description = desc_match.group(1).strip()
+
+    # Extract ## When to Use section body
+    when_match = re.search(
+        r"##\s+When to Use\s*\n(.*)(?=\n##\s|\Z)", text, re.DOTALL
+    )
+    if when_match:
+        raw = when_match.group(1).strip()
+        lines = [l.strip().lstrip("-*").strip() for l in raw.splitlines() if l.strip()]
+        if lines:
+            when_to_use = lines[0]
+            if len(lines) > 1:
+                when_to_use += "; " + lines[1]
+
+    return {"name": name, "description": description, "when_to_use": when_to_use}
 
 
-def find_project_skills_root(cwd: Optional[Path] = None, home: Optional[Path] = None) -> Optional[Path]:
-    """Return the directory that contains .cursor/skills when walking up from cwd, or None. Does not treat home itself as project."""
+def find_project_skills_root(
+    cwd: Optional[Path] = None, home: Optional[Path] = None
+) -> Optional[Path]:
+    """Walk up from cwd to find a .cursor/skills directory. Never returns home itself."""
     cwd = cwd or Path.cwd()
     home = home or Path.home()
     path = cwd.resolve()
     while path != path.parent:
-        skills_dir = path / CURSOR_SUBDIR / "skills"
-        if skills_dir.is_dir():
+        if (path / CURSOR_SUBDIR / "skills").is_dir():
             if path == home:
                 return None
             return path
@@ -71,59 +95,70 @@ def get_skill_scripts(skill_dir: Path) -> List[str]:
     scripts_dir = skill_dir / "scripts"
     if not scripts_dir.is_dir():
         return []
-    return sorted(entry.name for entry in scripts_dir.iterdir() if entry.is_file())
+    return sorted(e.name for e in scripts_dir.iterdir() if e.is_file())
 
 
-def list_skill_dirs(base: Path) -> List[Tuple[str, Path]]:
-    """List (skill_name, skill_path) for each skill under base/skills (base is e.g. .cursor or .claude)."""
-    skills_base = base / "skills"
-    if not skills_base.is_dir():
+def list_skills_in(skills_dir: Path) -> List[Tuple[str, Path, Dict[str, str]]]:
+    """Return (name, path, info) for each skill directory directly inside skills_dir."""
+    if not skills_dir.is_dir():
         return []
     result = []
-    for entry in sorted(skills_base.iterdir()):
+    for entry in sorted(skills_dir.iterdir()):
         if not entry.is_dir():
             continue
-        name = get_skill_name(entry)
-        if name is not None:
-            result.append((name, entry))
+        info = get_skill_info(entry)
+        if info is not None:
+            result.append((info["name"], entry, info))
     return result
 
 
 def collect_all_skills(
     project_root: Optional[Path],
     home: Path,
-) -> List[Tuple[str, str, str, List[str]]]:
-    """Collect (skill_name, source, agent, scripts) for every skill. source in ('project', 'home'), agent in ('cursor', 'claude', 'codex')."""
-    out: List[Tuple[str, str, str, List[str]]] = []
+) -> List[Tuple[str, str, str, List[str], Dict[str, str]]]:
+    """Collect (skill_name, source, agent, scripts, info) for every skill."""
+    out: List[Tuple[str, str, str, List[str], Dict[str, str]]] = []
 
     if project_root is not None:
-        cursor_skills = project_root / CURSOR_SUBDIR
-        for name, path in list_skill_dirs(cursor_skills):
-            out.append((name, "project", "cursor", get_skill_scripts(path)))
+        for name, path, info in list_skills_in(project_root / CURSOR_SUBDIR / "skills"):
+            out.append((name, "project", "cursor", get_skill_scripts(path), info))
 
-    for agent, subdir in [("cursor", CURSOR_SUBDIR), ("claude", ".claude"), ("codex", ".codex")]:
-        base = home / subdir
-        for name, path in list_skill_dirs(base):
-            out.append((name, "home", agent, get_skill_scripts(path)))
+    # ~/.cursor/skills (user skills)
+    for name, path, info in list_skills_in(home / CURSOR_SUBDIR / "skills"):
+        out.append((name, "home", "cursor", get_skill_scripts(path), info))
+
+    # ~/.cursor/skills-cursor (Cursor built-in meta-skills)
+    for name, path, info in list_skills_in(home / CURSOR_SUBDIR / "skills-cursor"):
+        out.append((name, "home", "cursor-meta", get_skill_scripts(path), info))
+
+    for agent, subdir in [("claude", ".claude"), ("codex", ".codex")]:
+        for name, path, info in list_skills_in(home / subdir / "skills"):
+            out.append((name, "home", agent, get_skill_scripts(path), info))
 
     return out
 
 
 def aggregate_by_skill(
-    rows: List[Tuple[str, str, str, List[str]]],
-) -> List[Tuple[str, List[str], List[str], List[str]]]:
-    """Group by skill name; return (skill_name, sorted unique sources, sorted unique agents, sorted unique scripts)."""
-    by_name: Dict[str, Tuple[set, set, set]] = {}
-    for name, source, agent, scripts in rows:
+    rows: List[Tuple[str, str, str, List[str], Dict[str, str]]],
+) -> List[Tuple[str, List[str], List[str], List[str], Dict[str, str]]]:
+    """Group by skill name; return (name, sources, agents, scripts, info)."""
+    by_name: Dict[str, Tuple[set, set, set, Dict[str, str]]] = {}
+    for name, source, agent, scripts, info in rows:
         if name not in by_name:
-            by_name[name] = (set(), set(), set())
+            by_name[name] = (set(), set(), set(), info)
         by_name[name][0].add(source)
         by_name[name][1].add(agent)
         by_name[name][2].update(scripts)
     return [
-        (name, sorted(sources), sorted(agents), sorted(script_set))
-        for name, (sources, agents, script_set) in sorted(by_name.items())
+        (name, sorted(sources), sorted(agents), sorted(script_set), info)
+        for name, (sources, agents, script_set, info) in sorted(by_name.items())
     ]
+
+
+def truncate(text: str, max_len: int) -> str:
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1] + "…"
 
 
 def colorize_source(source: str, use_color: bool) -> str:
@@ -134,73 +169,83 @@ def colorize_source(source: str, use_color: bool) -> str:
     return f"{COLOR_HOME}home{RESET}"
 
 
-def colorize_agents(agents: List[str], use_color: bool) -> str:
+def colorize_agent(agent: str, use_color: bool) -> str:
     if not use_color:
-        return ", ".join(agents)
-    parts = []
-    for a in agents:
-        if a == "cursor":
-            parts.append(f"{COLOR_CURSOR}cursor{RESET}")
-        elif a == "claude":
-            parts.append(f"{COLOR_CLAUDE}claude{RESET}")
-        elif a == "codex":
-            parts.append(f"{COLOR_CODEX}codex{RESET}")
-        else:
-            parts.append(a)
-    return ", ".join(parts)
+        return agent
+    if agent == "cursor":
+        return f"{COLOR_CURSOR}cursor{RESET}"
+    if agent == "cursor-meta":
+        return f"{COLOR_META}cursor-meta{RESET}"
+    if agent == "claude":
+        return f"{COLOR_CLAUDE}claude{RESET}"
+    if agent == "codex":
+        return f"{COLOR_CODEX}codex{RESET}"
+    return agent
+
+
+def _print_entry(
+    name: str,
+    src_str: str,
+    ag_str: str,
+    info: Dict[str, str],
+    scripts: List[str],
+    use_color: bool,
+) -> None:
+    name_display = f"{BOLD}{name}{RESET}" if use_color else name
+    print(name_display)
+    print(f"  Source: {src_str}  |  Agent: {ag_str}")
+
+    desc = info.get("description", "")
+    if desc:
+        desc_line = truncate(desc, 120)
+        print(f"  {COLOR_DESC}{desc_line}{RESET}" if use_color else f"  {desc_line}")
+
+    when = info.get("when_to_use", "")
+    if when:
+        when_line = f"When to Use: {truncate(when, 120)}"
+        print(f"  {COLOR_WHEN}{when_line}{RESET}" if use_color else f"  {when_line}")
+
+    for script in scripts:
+        script_line = f"↳  scripts/{script}"
+        print(f"  {COLOR_META}{script_line}{RESET}" if use_color else f"  {script_line}")
 
 
 def run_text(
-    aggregated: List[Tuple[str, List[str], List[str], List[str]]],
+    aggregated: List[Tuple[str, List[str], List[str], List[str], Dict[str, str]]],
     use_color: bool,
     project_root: Optional[Path],
 ) -> None:
-    """Print human-readable table with optional color."""
-    sources_label = "Source(s)"
-    agents_label = "Agent(s)"
-    name_label = "Skill"
-    max_name = max(len(name_label), max(len(n) for n, _, _, _ in aggregated)) if aggregated else len(name_label)
-    # Pad using plain text length; colored text may be longer
-    plain_sources = ", ".join
-    plain_agents = ", ".join
-    max_sources = max(len(sources_label), 14)  # "project, home"
-    max_agents = max(len(agents_label), 22)     # "claude, codex, cursor"
+    for i, (name, sources, agents, scripts, info) in enumerate(aggregated):
+        src_str = ", ".join(colorize_source(s, use_color) for s in sources)
+        ag_str = ", ".join(colorize_agent(a, use_color) for a in agents)
+        _print_entry(name, src_str, ag_str, info, scripts, use_color)
+        if i < len(aggregated) - 1:
+            print()
 
-    header = f"  {name_label:<{max_name}}  {sources_label:<{max_sources}}  {agents_label}"
-    print(header)
-    print("  " + "-" * max_name + "  " + "-" * max_sources + "  " + "-" * max_agents)
-    for name, sources, agents, scripts in aggregated:
-        if use_color:
-            src_str = ", ".join(colorize_source(s, True) for s in sources)
-            ag_str = colorize_agents(agents, True)
-        else:
-            src_str = plain_sources(sources)
-            ag_str = plain_agents(agents)
-        pad_src_len = max(0, max_sources - len(plain_sources(sources)))
-        print(f"  {name:<{max_name}}  {src_str}{' ' * pad_src_len}  {ag_str}")
-        for script in scripts:
-            if use_color:
-                print(f"    {COLOR_SCRIPT}↳  {script}{RESET}")
-            else:
-                print(f"    ↳  {script}")
     if project_root is not None:
         print()
-        print(f"  Project root: {project_root}")
+        print(f"Project root: {project_root}")
     print()
 
 
 def run_json(
-    aggregated: List[Tuple[str, List[str], List[str], List[str]]],
+    aggregated: List[Tuple[str, List[str], List[str], List[str], Dict[str, str]]],
     project_root: Optional[Path],
 ) -> None:
-    """Output JSON array of skill objects."""
     import json
 
     data = {
         "project_root": str(project_root) if project_root else None,
         "skills": [
-            {"name": name, "sources": sources, "agents": agents, "scripts": scripts}
-            for name, sources, agents, scripts in aggregated
+            {
+                "name": name,
+                "sources": sources,
+                "agents": agents,
+                "scripts": scripts,
+                "description": info.get("description", ""),
+                "when_to_use": info.get("when_to_use", ""),
+            }
+            for name, sources, agents, scripts, info in aggregated
         ],
     }
     print(json.dumps(data, indent=2))
@@ -208,7 +253,7 @@ def run_json(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="List skills available to the current project (project + home), with source and agent.",
+        description="List skills available to the current project, with description and trigger summary.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
