@@ -17,11 +17,15 @@ Search Confluence content using the `confluence-search.py` script, which calls t
 
 ## Prerequisites
 
-The following environment variables must be set:
+Before running the script, check that the required credentials are available:
 
-- `ATLASSIAN_USER_EMAIL` - your Atlassian account email
-- `ATLASSIAN_USER_API_KEY` - your Atlassian API token (https://id.atlassian.com/manage-profile/security/api-tokens)
-- `ATLASSIAN_BASE_URL` - your Confluence base URL, e.g. `https://mycompany.atlassian.net`
+- `ATLASSIAN_USER_EMAIL` - the user's Atlassian account email
+- `ATLASSIAN_USER_API_KEY` - the user's Atlassian API token (https://id.atlassian.com/manage-profile/security/api-tokens)
+- `ATLASSIAN_BASE_URL` - the Confluence site URL, e.g. `https://mycompany.atlassian.net`
+
+`ATLASSIAN_USER_EMAIL` and `ATLASSIAN_USER_API_KEY` must be set as environment variables. If they are missing, tell the user which ones are unset and ask them to set them before proceeding.
+
+`ATLASSIAN_BASE_URL` can be provided either as an environment variable or via the `--base-url` flag. If it is not set in the environment, ask the user for their Confluence site URL and pass it with `--base-url` instead of asking them to set the variable.
 
 ## Running the script
 
@@ -31,7 +35,7 @@ confluence-search.py "<CQL query>" [--limit N] [--base-url URL] [--json]
 
 Flags:
 - `--limit N` - max results to return (default 25)
-- `--base-url URL` - override `ATLASSIAN_BASE_URL`
+- `--base-url URL` - Confluence site URL (falls back to `ATLASSIAN_BASE_URL`)
 - `--json` - output as JSON (for further processing)
 
 ## Building CQL queries

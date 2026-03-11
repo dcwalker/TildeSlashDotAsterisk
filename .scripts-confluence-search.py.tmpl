@@ -64,9 +64,11 @@ def get_base_url(override: Optional[str]) -> str:
     url = override or os.environ.get("ATLASSIAN_BASE_URL", "").rstrip("/")
     if not url:
         print(
-            "Error: Confluence base URL not set.\n"
-            "  Pass --base-url https://mycompany.atlassian.net\n"
-            "  or set ATLASSIAN_BASE_URL in your environment.",
+            "Error: required environment variable not set: ATLASSIAN_BASE_URL\n"
+            "  Set it before running this script:\n"
+            "    export ATLASSIAN_BASE_URL=https://mycompany.atlassian.net\n"
+            "  or pass it directly:\n"
+            "    --base-url https://mycompany.atlassian.net",
             file=sys.stderr,
         )
         sys.exit(1)
