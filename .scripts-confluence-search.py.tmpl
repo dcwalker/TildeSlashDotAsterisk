@@ -26,6 +26,7 @@ import json
 import os
 import sys
 from datetime import datetime
+from typing import Optional
 
 try:
     import requests
@@ -58,7 +59,7 @@ def get_auth() -> tuple:
     return (email, token)
 
 
-def get_base_url(override: str | None) -> str:
+def get_base_url(override: Optional[str]) -> str:
     """Return Confluence base URL from argument or environment, or exit."""
     url = override or os.environ.get("ATLASSIAN_BASE_URL", "").rstrip("/")
     if not url:
@@ -83,7 +84,7 @@ def _handle_search_error(resp) -> None:
     sys.exit(1)
 
 
-def _extract_cursor(next_url: str) -> str | None:
+def _extract_cursor(next_url: str) -> Optional[str]:
     """Return the cursor value from a pagination next-link, or None."""
     for part in next_url.split("&"):
         if part.startswith("cursor=") or "?cursor=" in part:
@@ -132,7 +133,7 @@ def search(base_url: str, cql: str, limit: int, auth: tuple) -> list:
     return results
 
 
-def format_date(iso: str | None) -> str:
+def format_date(iso: Optional[str]) -> str:
     """Shorten an ISO 8601 timestamp to a readable date."""
     if not iso:
         return "unknown"
