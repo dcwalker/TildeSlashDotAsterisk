@@ -191,20 +191,16 @@ def format_result(index: int, result: dict, base_url: str) -> str:
     return "\n".join(lines)
 
 
-def run_text(results: list, cql: str, base_url: str, total_size: int) -> None:
+def run_text(results: list, cql: str, base_url: str) -> None:
     shown = len(results)
-    if total_size > shown:
-        print(f"Found {total_size} result(s) for: {cql}  (showing {shown})\n")
-    else:
-        print(f"Found {shown} result(s) for: {cql}\n")
-
+    print(f"Found {shown} result(s) for: {cql}\n")
     for i, result in enumerate(results, start=1):
         print(format_result(i, result, base_url))
         if i < shown:
             print()
 
 
-def run_json_output(results: list, cql: str, base_url: str, total_size: int) -> None:
+def run_json_output(results: list, cql: str, base_url: str) -> None:
     output = []
     for result in results:
         content = result.get("content", {})
@@ -221,7 +217,7 @@ def run_json_output(results: list, cql: str, base_url: str, total_size: int) -> 
             "last_modified": result.get("lastModified", ""),
             "excerpt": excerpt.strip(),
         })
-    print(json.dumps({"cql": cql, "total": total_size, "results": output}, indent=2))
+    print(json.dumps({"cql": cql, "total": len(results), "results": output}, indent=2))
 
 
 def main() -> None:
@@ -238,7 +234,7 @@ CQL quick reference:
   text ~ "keyword"                    full-text search across title, body, labels
   title ~ "keyword"                   search by title
   title = "Exact Title"               exact title match
-  type = page                         filter by content type (page, blogpost, attachment, ...)
+  type = page                         filter by type (page, blogpost, attachment, ...)
   space = ENG                         filter by space key
   space IN (ENG, OPS)                 multiple spaces
   label = "on-call"                   filter by label
@@ -257,8 +253,7 @@ CQL reference: https://developer.atlassian.com/cloud/confluence/advanced-searchi
     parser.add_argument(
         "--base-url",
         default=None,
-        help="Confluence base URL (e.g. https://mycompany.atlassian.net). "
-             "Falls back to ATLASSIAN_BASE_URL env var.",
+        help="Confluence base URL. Falls back to ATLASSIAN_BASE_URL env var.",
     )
     parser.add_argument(
         "--limit",
@@ -276,19 +271,16 @@ CQL reference: https://developer.atlassian.com/cloud/confluence/advanced-searchi
 
     auth = get_auth()
     base_url = get_base_url(args.base_url)
-
     results = search(base_url, args.cql, args.limit, auth)
 
     if not results:
         print(f"No results found for: {args.cql}")
         return
 
-    # The API may return a totalSize in the outer response; we only have what
-    # we fetched, so use len(results) as the shown count and pass it through.
     if args.output_json:
-        run_json_output(results, args.cql, base_url, len(results))
+        run_json_output(results, args.cql, base_url)
     else:
-        run_text(results, args.cql, base_url, len(results))
+        run_text(results, args.cql, base_url)
 
 
 if __name__ == "__main__":
