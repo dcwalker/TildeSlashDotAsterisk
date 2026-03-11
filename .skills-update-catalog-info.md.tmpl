@@ -47,8 +47,8 @@ Every catalog-info must include a link to the corresponding issue tracking proje
 
 1. Run: `git log -1000 --pretty=format:"%s" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | sort | uniq -c | sort -rn`
 2. The most frequent project prefix indicates the issue tracking project.
-3. Share the git history findings with the user as evidence.
-4. Prompt the user to validate that the issue tracking link in catalog-info is correct.
+3. Present your findings to the user: show the git history analysis results, the project prefix identified, and the issue tracking URL you propose to use.
+4. Prompt the user to validate that the issue tracking link in catalog-info is correct. Do not proceed until confirmed.
 
 If no issue IDs appear in history, ask the user for the correct issue tracking project URL. Add the URL to `metadata.links` with `icon: developerBoard` when supported.
 
@@ -96,7 +96,7 @@ Update catalog-info.yaml with:
 - Validated `spec.owner` (from Phase 4)
 - Appropriate `metadata.tags` (from Phase 6)
 
-Check existing data for accuracy: remove inaccurate details, verify links are not broken (if you cannot access a link, ask the user to confirm it is still valid), and ensure tags reflect the current codebase (e.g. remove tags for languages no longer used). Preserve accurate annotations, labels, and other metadata. Tidy up: sort lists alphabetically, fix spelling and grammar, and proofread for readability. Check linters after applying changes.
+Check existing data for accuracy: remove inaccurate details, verify links are not broken (if you cannot access a link, ask the user to confirm it is still valid), and ensure tags reflect the current codebase (e.g. remove tags for languages no longer used). Preserve accurate annotations, labels, and other metadata. Tidy up: sort lists alphabetically, fix spelling and grammar, and proofread for readability. Check linters after applying changes. If linters fail, fix the issues and re-run until they pass.
 
 ## Scripts
 
@@ -110,6 +110,8 @@ The script is at `scripts/github-team-info.py` relative to this skill's director
 
 ## Summary Checklist
 
+After completing all phases, present this checklist to the user with your findings for each item. Mark each item as done or note what is outstanding:
+
 - [ ] Description written for readers with no prior knowledge
 - [ ] Customer/consumer and key features identified
 - [ ] Acronyms defined on first use
@@ -118,3 +120,4 @@ The script is at `scripts/github-team-info.py` relative to this skill's director
 - [ ] Owner validated via github-team-info.py (team exists, has members)
 - [ ] Tags added: languages, platform, vendor tools, alternative names
 - [ ] Links include issue tracking, chat, and README
+- [ ] Linters pass after changes applied

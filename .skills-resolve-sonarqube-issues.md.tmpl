@@ -24,16 +24,29 @@ Next, run the list-sonar-issues.py script with no flags to show the Issues, Secu
 
 If the script fails or returns an error, stop and report the issue before proceeding.
 
-Review all findings holistically. If there are many items of a similar type (same rule, same severity/type), plan to group those fixes into a single changeset and commit.
+### Step 1: Report findings breakdown
 
-If there are many findings, prioritize in this order:
+Before making any fixes, present a findings summary:
+- Total count of findings by category (Issues, Security Hotspots, Code Duplication, Test Coverage)
+- Breakdown by severity within each category
+- Note any patterns (e.g., "12 issues are the same lint rule in different files")
 
-1. Security Hotspots (highest severity first)
-2. Issues (highest severity first)
-3. Code Duplication
-4. Test Coverage
+### Step 2: Create a grouping plan
 
-Work through the findings following this workflow:
+Review all findings holistically and present a grouping plan:
+- Which findings will be grouped into a single commit (same rule, same severity/type)
+- The processing order, prioritized as:
+  1. Security Hotspots (highest severity first)
+  2. Issues (highest severity first)
+  3. Code Duplication
+  4. Test Coverage
+- For each group: how many items, the planned fix approach, and whether any appear invalid
+
+Present this plan before starting fixes.
+
+### Step 3: Fix or comment on each group
+
+Work through each group following this workflow:
 
 1. Review the issue(s) and confirm whether they are valid.
 
@@ -51,4 +64,14 @@ Work through the findings following this workflow:
    - Do not suppress the issue without approval.
    - Suppressing SonarQube items requires user approval. Propose why suppression is appropriate and wait for confirmation before proceeding.
 
-After fixing all valid issues, summarize the results. Re-running the list-sonar-issues.py script to verify that the issues have been resolved will not work, as the items won't be updated until the fixes are committed and pushed.
+After processing each group, output a brief summary of what was done (issues fixed, issues marked invalid, commit SHA if applicable) before moving to the next group.
+
+### Step 4: Final report
+
+After fixing all valid issues, provide a structured summary:
+1. **Fixed**: Count and list of issues fixed, with commit SHAs
+2. **Invalid/Suppressed**: Count and list of issues marked invalid, with reasons
+3. **Unresolved**: Any issues that could not be addressed, with the reason
+4. **Statistics**: Total findings, total fixed, total invalid, total unresolved
+
+Re-running the list-sonar-issues.py script to verify that the issues have been resolved will not work, as the items won't be updated until the fixes are committed and pushed.

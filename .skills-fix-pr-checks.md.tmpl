@@ -15,6 +15,10 @@ Investigate the repository's CI configuration, build a plan of checks that can r
 
 ## Instructions
 
+### Phase 0: Read project conventions
+
+Please start by reviewing the AGENTS.md and CONTRIBUTING.md files in the project (if present). Note any rules about testing, linting, build processes, or CI configuration that may affect which checks to run and how.
+
 ### Phase 1: Investigate the repository
 
 Examine the repo to discover what checks exist and which can run locally.
@@ -74,8 +78,8 @@ Produce a concrete plan of checks to run locally.
 - Do not assume a specific command (e.g. `yarn pr:check`) exists. Derive commands from the repo's CI and package.json.
 - Run from the repository root unless a check explicitly requires another directory.
 - Fix errors in an order that respects dependencies (e.g. type errors before lint if lint depends on types).
-- If the same failure persists after multiple fix attempts, ask the user for guidance rather than looping indefinitely.
-- Cursor stop hooks may enforce an iteration limit (e.g. 5); if you hit it, summarize progress and the user can re-invoke the skill to continue.
+- If the same failure persists after 3 fix attempts for a single check, stop and ask the user for guidance rather than looping indefinitely.
+- If the agent platform enforces an iteration or time limit, summarize progress so the user can re-invoke the skill to continue.
 
 ## Example flow (illustrative)
 

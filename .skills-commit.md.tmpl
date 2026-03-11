@@ -22,11 +22,11 @@ Before committing, follow this workflow:
 
 1. Run `git status` and `git diff` to review all uncommitted changes.
 
-2. Verify that the changes are intentional and complete:
-   - Ensure no debug code or temporary changes are included.
-   - Confirm that documentation in the README and elsewhere has been updated if the changes impact it.
-   - Confirm that API spec files (openapi.yaml or openapi.json) have been updated if the changes impact them.
-   - Confirm all changes are related and should be in a single commit.
+2. Verify that the changes are intentional and complete. Confirm each of the following and report the result:
+   - **No debug code**: No temporary logging, hardcoded test values, or commented-out code included. [Yes / No — describe]
+   - **Documentation updated**: If the changes impact user-facing behavior, README or other docs have been updated. [Yes / N/A]
+   - **API spec updated**: If the changes impact API endpoints, openapi.yaml or openapi.json has been updated. [Yes / N/A]
+   - **Changes are related**: All changes belong in a single commit. [Yes / No — describe]
    - If unrelated changes exist, ask whether to commit them separately or together.
 
 3. If you need more context about the work item to write a better commit message, fetch the details:
@@ -54,5 +54,10 @@ Before committing, follow this workflow:
    - Review the error message.
    - Fix any issues raised by hooks or validation.
    - Retry the commit.
+
+8. **Report**: After a successful commit, report:
+   - The commit SHA
+   - The commit message used
+   - A brief summary of what was committed (files changed, nature of changes)
 
 If there are no uncommitted changes, report that to the user.

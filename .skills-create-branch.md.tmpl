@@ -17,6 +17,8 @@ Use this skill when:
 
 ## Instructions
 
+Please start by reviewing the AGENTS.md and CONTRIBUTING.md files in the project (if present). Note any branch naming conventions that should override the defaults below.
+
 1. **Get the issue key and title/summary**
    - If the user provided an issue key (e.g. a Jira key like `PROJ-123`, or a GitHub issue number), use it.
    - If there is a Jira or GitHub work item in context, use its key and summary or title.
@@ -61,5 +63,10 @@ Use this skill when:
      gh issue comment <issue-number> --body "Branch created: [<branch-name>](<branch-url>)"
      ```
    - If commenting fails (e.g. no auth, wrong project), warn the user but do not abort.
+
+7. **Report**: After completing all steps, summarize:
+   - Branch name created
+   - Whether it was pushed to origin (and the remote URL if so)
+   - Whether a comment was posted on the linked ticket/issue (and any errors if not)
 
 If the user prefers a different naming pattern (e.g. issue key only, or a different max length), follow their preference.

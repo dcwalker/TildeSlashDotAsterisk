@@ -37,7 +37,8 @@ Review the Dependabot PRs and follow this workflow:
 2. Group all updates and create a plan:
    - List all package.json files that need updates.
    - List all direct dependencies to be updated with their current and target versions.
-   - Present the plan to the user for review before proceeding.
+   - For transitive dependency updates, show the chain: which Dependabot PR, which transitive dependency, which direct dependency needs updating, and how you determined this (e.g., output of `npm ls <package>` or `yarn why <package>`).
+   - Present the plan to the user for review. **Do not proceed to step 3 until the user explicitly approves the plan.**
 
 3. After plan approval, update the package.json file(s):
    - Update each direct dependency to the appropriate version; do not add new direct dependencies.
@@ -50,6 +51,12 @@ Review the Dependabot PRs and follow this workflow:
    - If there are breaking changes or test failures, report them and ask how to proceed.
 
 6. Commit the changes. Follow the commit workflow in the commit skill, ensuring the commit message includes all Dependabot PR numbers/titles that will be resolved.
+
+7. **Final report**: After committing, provide a structured summary:
+   - **Updated**: List each dependency updated with old version, new version, and which Dependabot PR(s) it supersedes
+   - **Test/lint results**: Whether all checks passed, and any failures encountered
+   - **Superseded PRs**: Full list of Dependabot PR numbers that can now be closed
+   - **Issues**: Any problems encountered or dependencies that could not be updated
 
 ## Example Scenario
 

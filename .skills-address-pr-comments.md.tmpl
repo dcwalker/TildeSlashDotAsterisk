@@ -15,6 +15,17 @@ Use this skill when:
 - You need to respond to code review comments
 - The user mentions PR feedback, comments, or reviews
 
+## Execution Rules
+
+After processing each comment, output a **Comment Summary** before moving to the next:
+
+> **Comment [ID] — [brief description]**
+> - **Action taken**: [Fixed / Already fixed / Invalid — with brief explanation]
+> - **Commit**: [SHA if applicable, or "N/A"]
+> - **Reply**: [What was posted as the reply]
+
+After all comments are processed, output a **Final Report** (see below).
+
 ## Instructions
 
 Please start by reviewing the AGENTS.md and CONTRIBUTING.md files for project conventions.
@@ -39,7 +50,7 @@ Then, use the script to fetch and review all unresolved GitHub PR comments for t
 list-pr-comments.sh
 ```
 
-For each unresolved comment, follow the appropriate workflow below:
+Before processing, list all unresolved comments with a brief summary of each and your planned action (fix, already fixed, or invalid). Then process each comment following the appropriate workflow below:
 
 ### Workflow 1: Valid Comment Requiring a Fix
 
@@ -98,6 +109,15 @@ If the comment is not valid or not applicable:
    ```bash
    list-pr-comments.sh --resolve <comment-id>
    ```
+
+## Final Report
+
+After processing all comments, provide a structured summary:
+
+1. **Comments processed**: Total count
+2. **Breakdown**: How many fixed, how many already fixed, how many marked invalid
+3. **Commits created**: List each commit SHA with a brief description
+4. **Unresolved**: Any comments that could not be addressed, with the reason
 
 ## Important Notes
 

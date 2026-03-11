@@ -67,7 +67,9 @@ Ask the user who did not attend. After response:
 
 ### Step 4: Interview for Significance (Notes)
 
-This is the most important step. Every line of the raw notes must be reviewed in a back-and-forth interview process with the user.
+This is the most important step. **Every line** of the raw notes must be reviewed in a back-and-forth interview process with the user. Do not skip any line, even if it seems self-explanatory.
+
+If the raw notes contain N lines, you must ask at least N clarifying questions (one per line). Do not batch multiple lines into a single question.
 
 Process:
 - Go through each note line one at a time, in order.
@@ -119,7 +121,7 @@ After the interview and normalization, format the notes section as a bulleted li
    - Markdown format: `- [ ] ...`
    - No sub-sections
    - Responsibility rewrite:
-     - If assignee is Dan Walker: write as a task Dan needs to complete.
+     - If assignee is {{ .name }}: write as a task Dan needs to complete.
      - If assignee is anyone else: rewrite as a follow-up task Dan should do to confirm completion.
 4. Present action items draft for review. Ask: "Are these action items correct?"
 5. It is valid for a meeting to have no action items. If none exist, explicitly confirm this with the user.
