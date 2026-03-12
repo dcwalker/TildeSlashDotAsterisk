@@ -229,9 +229,9 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Environment variables:
-  ATLASSIAN_USER_EMAIL    Your Atlassian account email
-  ATLASSIAN_USER_API_KEY  Your Atlassian API token
-  ATLASSIAN_BASE_URL      Your Confluence base URL (e.g. https://mycompany.atlassian.net)
+  ATLASSIAN_USER_EMAIL    Your Atlassian account email (required)
+  ATLASSIAN_USER_API_KEY  Your Atlassian API token (required)
+  ATLASSIAN_BASE_URL      Your Confluence base URL (optional if --base-url is passed)
 
 CQL quick reference:
   text ~ "keyword"                    full-text search across title, body, labels
