@@ -175,6 +175,90 @@ ls -la ~/.cursor/skills/my-new-skill/ \
        ~/.codex/skills/my-new-skill/
 ```
 
+## Importing Existing Skills
+
+The `import-skills.py` script automates importing skills that already exist on the filesystem (e.g. skills deployed by a project or another tool) into the chezmoi-managed setup. It handles creating source templates, template references for all three tools, and any extra content (additional markdown files, scripts, etc.).
+
+### Basic Usage
+
+```bash
+# Scan home directory and current working directory for importable skills
+import-skills.py
+
+# Also scan an additional directory
+import-skills.py --scan-dir /path/to/project
+
+# Preview what would be done without making changes
+import-skills.py --dry-run
+```
+
+### How It Works
+
+1. **Scans** for skills directories in `~/.cursor/skills`, `~/.claude/skills`, `~/.codex/skills`, and the current working directory's tool subdirectories
+2. **Compares** discovered skills against what chezmoi already manages
+3. **Presents** an interactive multi-select prompt listing only new skills
+4. **Shows a preview** of all files that will be created
+5. **Prompts for confirmation** before making any changes
+6. After import, run `chezmoi apply` to deploy
+
+### Interactive Selection
+
+The selection prompt supports multiple input formats:
+
+- Single numbers: `1` or `3`
+- Comma-separated: `1,3,5`
+- Space-separated: `1 3 5`
+- Ranges: `1-3` (selects 1, 2, 3)
+- Select everything: `all`
+- Cancel: `Ctrl+C`
+
+### Example Session
+
+```
+$ import-skills.py
+Scanning for skills...
+  /Users/me
+  /Users/me/my-project
+
+Found skills directories:
+  /Users/me/.cursor/skills
+
+Skills available to import:
+1. my-new-skill (/Users/me/.cursor/skills) - Does something useful
+2. another-skill (/Users/me/.cursor/skills) - Does something else
+
+You can select multiple items by entering numbers separated by commas or spaces.
+Examples: '1,3,5' or '1 3 5' or '1-3' for ranges
+Enter 'all' to select all items, or press Ctrl+C to cancel.
+Enter selection: 1
+
+The following changes will be made:
+  my-new-skill:
+    Copy SKILL.md -> .skills-my-new-skill.md.tmpl
+    Create reference dot_cursor/exact_skills/my-new-skill/SKILL.md.tmpl
+    Create reference dot_claude/exact_skills/my-new-skill/SKILL.md.tmpl
+    Create reference dot_codex/exact_skills/my-new-skill/SKILL.md.tmpl
+
+Proceed with import? (y/n): y
+
+Importing my-new-skill...
+
+Import complete.
+Run 'chezmoi apply' to deploy skills to all tools.
+```
+
+### What Gets Imported
+
+For each selected skill, the script creates:
+
+| Source File | Chezmoi Source Template | Tool Reference |
+|---|---|---|
+| `SKILL.md` | `.skills-<name>.md.tmpl` | `dot_*/exact_skills/<name>/SKILL.md.tmpl` |
+| `extra-doc.md` | `.skills-<name>-extra-doc.md.tmpl` | `dot_*/exact_skills/<name>/extra-doc.md.tmpl` |
+| `scripts/my-script.py` | `.scripts-my-script.py.tmpl` | `dot_*/exact_skills/<name>/scripts/executable_my-script.py.tmpl` |
+
+Each tool reference file contains a single `{{ include }}` directive pointing to the shared source template, maintaining the single-source-of-truth pattern.
+
 ## Removing a Skill
 
 To remove a skill from all tools:
