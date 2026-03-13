@@ -10,8 +10,8 @@ CACHE_FILE="$CACHE_DIR/package-updates"
 
 mkdir -p "$CACHE_DIR"
 
-# Ensure common tools are in PATH
-for dir in "$HOME/.local/bin" "$HOME/.dprint/bin" "/usr/local/bin" "$HOME/Library/Python/3.9/bin" "$HOME/bin" "$HOME/scripts"; do
+# Ensure common tools are in PATH (including Homebrew on macOS)
+for dir in "$HOME/.local/bin" "$HOME/.dprint/bin" "/opt/homebrew/bin" "/usr/local/bin" "$HOME/Library/Python/3.9/bin" "$HOME/bin" "$HOME/scripts"; do
     [ -d "$dir" ] && PATH="$dir:$PATH"
 done
 
@@ -85,6 +85,19 @@ check_cargo() {
             local count
             count=$(echo "$outdated" | wc -l | tr -d ' ')
             echo "🦀 $count Cargo packages need updating (cargo install-update --all)"
+        fi
+    fi
+}
+
+check_brew() {
+    if command -v brew >/dev/null 2>&1; then
+        brew update >/dev/null 2>&1 || true
+        local outdated
+        outdated=$(brew outdated 2>/dev/null) || true
+        if [ -n "$outdated" ]; then
+            local count
+            count=$(echo "$outdated" | wc -l | tr -d ' ')
+            echo "🍺 $count Homebrew packages need updating (brew upgrade)"
         fi
     fi
 }
@@ -206,6 +219,7 @@ check_external_repos() {
     check_rpm
     check_apt
     check_cargo
+    check_brew
     check_mas
     check_chezmoi
     check_external_repos

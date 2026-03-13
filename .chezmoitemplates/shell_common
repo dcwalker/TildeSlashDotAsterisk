@@ -8,6 +8,13 @@ export EDITOR=vim
 # Make less more user-friendly
 export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
 
+# Homebrew (macOS): eval shellenv so brew and formulae are on PATH
+if [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+
 # PATH additions (only add directories that exist)
 [ -d "$HOME/.dprint/bin" ] && PATH="$HOME/.dprint/bin:$PATH"
 [ -d "/usr/local/bin" ] && PATH="/usr/local/bin:$PATH"
