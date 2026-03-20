@@ -121,7 +121,7 @@ check_chezmoi() {
         if [ -n "$chezmoi_status" ]; then
             local count
             count=$(echo "$chezmoi_status" | wc -l | tr -d ' ')
-            echo "🏠 $count chezmoi dotfile changes pending (chezmoi apply --interactive)"
+            echo "🏠 $count chezmoi dotfile changes pending (chezmoi status && chezmoi apply)"
         fi
 
         local source_dir
@@ -131,7 +131,7 @@ check_chezmoi() {
             local behind
             behind=$(git -C "$source_dir" rev-list --count HEAD..@{u} 2>/dev/null) || true
             if [ -n "$behind" ] && [ "$behind" -gt 0 ]; then
-                echo "🏠 chezmoi repo is $behind commit(s) behind remote (chezmoi git pull && chezmoi apply --interactive)"
+                echo "🏠 chezmoi repo is $behind commit(s) behind remote (chezmoi git pull && chezmoi status && chezmoi apply)"
             fi
         fi
     fi
