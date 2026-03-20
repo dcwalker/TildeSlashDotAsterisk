@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Install Python packages required by chezmoi-managed scripts.
+# chezmoi re-runs this script whenever requirements.txt changes.
+# requirements.txt hash: {{ include "exact_scripts/requirements.txt" | sha256sum }}
+
+set -euo pipefail
+
+if ! command -v pip3 &> /dev/null; then
+    echo "pip3 is not available. Skipping Python package installation."
+    exit 0
+fi
+
+REQUIREMENTS="{{ .chezmoi.sourceDir }}/exact_scripts/requirements.txt"
+
+echo "Installing Python packages from requirements.txt..."
+pip3 install --user -q -r "$REQUIREMENTS"
+echo "Python packages installed successfully."

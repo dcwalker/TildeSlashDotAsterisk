@@ -127,3 +127,18 @@ Or apply one file at a time:
 ```sh
 chezmoi apply ~/.zshrc
 ```
+
+### Python dependencies
+
+Several scripts in `exact_scripts/` require third-party Python packages. These
+are listed in `exact_scripts/requirements.txt` and installed automatically via a
+`run_onchange_before_` script whenever the requirements file changes.
+
+To install manually:
+
+```sh
+pip3 install --user -r "$(chezmoi source-path)/exact_scripts/requirements.txt"
+```
+
+To add a new dependency, add it to `exact_scripts/requirements.txt` and run
+`chezmoi apply` — chezmoi will detect the change and re-run the installer.

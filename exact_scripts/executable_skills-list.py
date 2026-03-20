@@ -183,6 +183,36 @@ def colorize_agent(agent: str, use_color: bool) -> str:
     return agent
 
 
+def _format_entry(
+    name: str,
+    src_str: str,
+    ag_str: str,
+    info: Dict[str, str],
+    scripts: List[str],
+    use_color: bool,
+) -> List[str]:
+    lines = []
+    name_display = f"{BOLD}{name}{RESET}" if use_color else name
+    lines.append(name_display)
+    lines.append(f"  Source: {src_str}  |  Agent: {ag_str}")
+
+    desc = info.get("description", "")
+    if desc:
+        desc_line = truncate(desc, 120)
+        lines.append(f"  {COLOR_DESC}{desc_line}{RESET}" if use_color else f"  {desc_line}")
+
+    when = info.get("when_to_use", "")
+    if when:
+        when_line = f"When to Use: {truncate(when, 120)}"
+        lines.append(f"  {COLOR_WHEN}{when_line}{RESET}" if use_color else f"  {when_line}")
+
+    for script in scripts:
+        script_line = f"↳  scripts/{script}"
+        lines.append(f"  {COLOR_META}{script_line}{RESET}" if use_color else f"  {script_line}")
+
+    return lines
+
+
 def _print_entry(
     name: str,
     src_str: str,
@@ -191,23 +221,8 @@ def _print_entry(
     scripts: List[str],
     use_color: bool,
 ) -> None:
-    name_display = f"{BOLD}{name}{RESET}" if use_color else name
-    print(name_display)
-    print(f"  Source: {src_str}  |  Agent: {ag_str}")
-
-    desc = info.get("description", "")
-    if desc:
-        desc_line = truncate(desc, 120)
-        print(f"  {COLOR_DESC}{desc_line}{RESET}" if use_color else f"  {desc_line}")
-
-    when = info.get("when_to_use", "")
-    if when:
-        when_line = f"When to Use: {truncate(when, 120)}"
-        print(f"  {COLOR_WHEN}{when_line}{RESET}" if use_color else f"  {when_line}")
-
-    for script in scripts:
-        script_line = f"↳  scripts/{script}"
-        print(f"  {COLOR_META}{script_line}{RESET}" if use_color else f"  {script_line}")
+    for line in _format_entry(name, src_str, ag_str, info, scripts, use_color):
+        print(line)
 
 
 def run_text(
@@ -226,6 +241,182 @@ def run_text(
         print()
         print(f"Project root: {project_root}")
     print()
+
+
+def run_interactive(
+    aggregated: List[Tuple[str, List[str], List[str], List[str], Dict[str, str]]],
+    use_color: bool,
+    project_root: Optional[Path],
+) -> None:
+    import curses
+
+    # Color pair IDs
+    C_DEFAULT = 0
+    C_BOLD = 1
+    C_PROJECT = 2  # green
+    C_HOME = 3  # blue
+    C_CURSOR = 4  # cyan
+    C_CLAUDE = 5  # yellow
+    C_CODEX = 6  # magenta
+    C_META = 7  # grey (bright black)
+    C_DESC = 8  # white
+    C_STATUS = 9  # reverse video for status bar
+
+    # A segment is (text, color_pair_id, bold)
+    Segment = Tuple[str, int, bool]
+    # A line is a list of segments
+    SegLine = List[Segment]
+
+    def _colorize_source_seg(source: str) -> Segment:
+        if source == "project":
+            return (source, C_PROJECT, False)
+        return (source, C_HOME, False)
+
+    def _colorize_agent_seg(agent: str) -> Segment:
+        pair = {
+            "cursor": C_CURSOR, "cursor-meta": C_META,
+            "claude": C_CLAUDE, "codex": C_CODEX,
+        }.get(agent, C_DEFAULT)
+        return (agent, pair, False)
+
+    def _format_entry_segs(
+        name: str, sources: List[str], agents: List[str],
+        scripts: List[str], info: Dict[str, str],
+    ) -> List[SegLine]:
+        lines: List[SegLine] = []
+
+        # Name line (bold)
+        lines.append([(name, C_BOLD, True)])
+
+        # Source/Agent line
+        src_segs: SegLine = [("  Source: ", C_DEFAULT, False)]
+        for i, s in enumerate(sources):
+            if i > 0:
+                src_segs.append((", ", C_DEFAULT, False))
+            src_segs.append(_colorize_source_seg(s))
+        src_segs.append(("  |  Agent: ", C_DEFAULT, False))
+        for i, a in enumerate(agents):
+            if i > 0:
+                src_segs.append((", ", C_DEFAULT, False))
+            src_segs.append(_colorize_agent_seg(a))
+        lines.append(src_segs)
+
+        # Description
+        desc = info.get("description", "")
+        if desc:
+            lines.append([("  " + truncate(desc, 120), C_DESC, False)])
+
+        # When to Use
+        when = info.get("when_to_use", "")
+        if when:
+            lines.append([("  When to Use: " + truncate(when, 120), C_META, False)])
+
+        # Scripts
+        for script in scripts:
+            lines.append([("  ↳  scripts/" + script, C_META, False)])
+
+        return lines
+
+    # Pre-build structured entries: (name, list of seg-lines)
+    entries: List[Tuple[str, List[SegLine]]] = []
+    for name, sources, agents, scripts, info in aggregated:
+        seg_lines = _format_entry_segs(name, sources, agents, scripts, info)
+        entries.append((name, seg_lines))
+
+    def _run(stdscr: "curses.window") -> None:
+        curses.use_default_colors()
+        curses.curs_set(1)
+        stdscr.keypad(True)
+
+        # Init color pairs (-1 = default background)
+        curses.init_pair(C_BOLD, -1, -1)
+        curses.init_pair(C_PROJECT, curses.COLOR_GREEN, -1)
+        curses.init_pair(C_HOME, curses.COLOR_BLUE, -1)
+        curses.init_pair(C_CURSOR, curses.COLOR_CYAN, -1)
+        curses.init_pair(C_CLAUDE, curses.COLOR_YELLOW, -1)
+        curses.init_pair(C_CODEX, curses.COLOR_MAGENTA, -1)
+        curses.init_pair(C_META, curses.COLOR_WHITE, -1)  # closest to grey
+        curses.init_pair(C_DESC, curses.COLOR_WHITE, -1)
+        curses.init_pair(C_STATUS, curses.COLOR_BLACK, curses.COLOR_WHITE)
+
+        query = ""
+        scroll = 0
+
+        while True:
+            stdscr.erase()
+            height, width = stdscr.getmaxyx()
+
+            # Filter entries by query (case-insensitive match on skill name)
+            if query:
+                q_lower = query.lower()
+                filtered = [(n, sl) for n, sl in entries if q_lower in n.lower()]
+            else:
+                filtered = entries
+
+            # Flatten to output lines with blank separators
+            output_lines: List[SegLine] = []
+            for i, (name, seg_lines) in enumerate(filtered):
+                if i > 0:
+                    output_lines.append([])  # blank separator
+                output_lines.extend(seg_lines)
+
+            # Status bar
+            status = f" {len(filtered)}/{len(entries)} skills  |  Filter: {query}"
+
+            # Clamp scroll
+            visible = height - 2
+            max_scroll = max(0, len(output_lines) - visible)
+            if scroll > max_scroll:
+                scroll = max_scroll
+
+            # Render output lines with colors
+            for row_idx in range(min(visible, len(output_lines) - scroll)):
+                seg_line = output_lines[scroll + row_idx]
+                col = 0
+                for text, pair_id, bold in seg_line:
+                    attr = curses.color_pair(pair_id)
+                    if bold:
+                        attr |= curses.A_BOLD
+                    display = text[: width - col]
+                    if not display:
+                        continue
+                    try:
+                        stdscr.addstr(row_idx, col, display, attr)
+                    except curses.error:
+                        pass
+                    col += len(display)
+
+            # Render status bar at bottom
+            try:
+                padded = status.ljust(width)[:width]
+                stdscr.addstr(height - 1, 0, padded, curses.color_pair(C_STATUS))
+            except curses.error:
+                pass
+
+            stdscr.refresh()
+
+            try:
+                ch = stdscr.get_wch()
+            except KeyboardInterrupt:
+                break
+            if ch == "\x1b" or ch == "\x03":  # Escape or Ctrl-C
+                break
+            elif ch == "\x7f" or ch == curses.KEY_BACKSPACE or ch == "\b":
+                query = query[:-1]
+                scroll = 0
+            elif ch == curses.KEY_DOWN:
+                scroll = min(scroll + 1, max_scroll)
+            elif ch == curses.KEY_UP:
+                scroll = max(scroll - 1, 0)
+            elif ch == curses.KEY_NPAGE:  # Page Down
+                scroll = min(scroll + visible, max_scroll)
+            elif ch == curses.KEY_PPAGE:  # Page Up
+                scroll = max(scroll - visible, 0)
+            elif isinstance(ch, str) and ch.isprintable():
+                query += ch
+                scroll = 0
+
+    curses.wrapper(_run)
 
 
 def run_json(
@@ -272,6 +463,11 @@ Examples:
         action="store_true",
         help="Output JSON only",
     )
+    parser.add_argument(
+        "--no-filter",
+        action="store_true",
+        help="Disable interactive fuzzy filter (print full list instead)",
+    )
     args = parser.parse_args()
 
     home = Path.home()
@@ -283,6 +479,8 @@ Examples:
     use_color = not args.no_color and sys.stdout.isatty()
     if args.json:
         run_json(aggregated, project_root)
+    elif not args.no_filter and sys.stdout.isatty():
+        run_interactive(aggregated, use_color, project_root)
     else:
         run_text(aggregated, use_color, project_root)
 

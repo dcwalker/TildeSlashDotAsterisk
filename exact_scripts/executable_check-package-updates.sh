@@ -117,7 +117,7 @@ check_mas() {
 check_chezmoi() {
     if command -v chezmoi >/dev/null 2>&1; then
         local chezmoi_status
-        chezmoi_status=$(chezmoi status 2>/dev/null | grep -v '^ R ' || true)
+        chezmoi_status=$(chezmoi status --exclude=scripts 2>/dev/null) || true
         if [ -n "$chezmoi_status" ]; then
             local count
             count=$(echo "$chezmoi_status" | wc -l | tr -d ' ')
