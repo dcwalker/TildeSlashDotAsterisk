@@ -157,7 +157,11 @@ For bulk updates use `--key` or `--jql`. Use `--ignore-errors` to continue when 
 
 **Transition (status):** `acli jira workitem transition --key "KEY-1,KEY-2" --status "Done"`. Use exact status names from the project workflow.
 
-**Add comment:** `acli jira workitem comment-create --key "KEY-1" --body "Comment text"`. Use `--body-file` or `--editor` for long or ADF content. Prefer rich formatting and put code or log excerpts in code blocks. Supports `--jql`, `--filter`.
+**Add comment:**
+
+1. Show the user the **exact** draft comment text (what will appear in Jira).
+2. Wait for **explicit approval** before running acli. Do not post based only on implied consent.
+3. Run: `acli jira workitem comment create --key "KEY-1" --body "Comment text"` (or `-k`/`-b`). Use `--body-file` or `--editor` for long or ADF content. Prefer rich formatting and put code or log excerpts in code blocks. `comment create` also supports `--jql` and `--filter` for bulk targets; use only with user approval of the draft and scope.
 
 **Edit fields (summary, description, type, labels, assignee):** `acli jira workitem edit --key "KEY-1,KEY-2" --summary "New summary" --type "Bug"`. Common flags: `--summary`, `--description`, `--description-file`, `--type`, `--assignee`, `--labels`, `--remove-labels`, `--remove-assignee`. Use `--generate-json` then `--from-json path/to.json` to apply edits from JSON.
 
@@ -209,7 +213,17 @@ acli `workitem edit --summary "X"` sets the same summary for all keys. To change
 
 ## ADF formatting examples (create)
 
-**Bold:** `"marks": [{"type": "strong"}]` on text. **Code block:** `"type": "codeBlock", "attrs": { "language": "javascript" }, "content": [{ "type": "text", "text": "..." }]`. **Link:** `"marks": [{ "type": "link", "attrs": { "href": "https://example.com" } }]`. Full reference: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+**Bold:** `"marks": [{"type": "strong"}]` on text. **Code block:** `"type": "codeBlock", "attrs": { "language": "javascript" }, "content": [{ "type": "text", "text": "..." }]`. **Link:** `"marks": [{ "type": "link", "attrs": { "href": "https://example.com" } }]`.
+
+**Canonical ADF specification:** [Atlassian Document Format – Document structure](https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/) is the source of truth for Jira Cloud rich text JSON: the root `doc` node, block and inline nodes (for example `paragraph`, `heading`, `bulletList`, `codeBlock`, `mention`, `inlineCard`, `media`), and marks (for example `link`, `strong`, `code`). That page links to a JSON schema and lists each node and mark. It also states that issue comments and **`textarea` custom fields** store content as ADF—use the same reference when shaping descriptions, comments, or those fields.
+
+### Rich text (ADF): reminders (not a duplicate of the ADF spec)
+
+- **Do not re-spec nodes here.** For `mention`, `inlineCard`, tables, panels, and all other supported shapes, read the node pages under the structure guide above.
+- **Mentions:** `mention` requires the correct user `accountId` in attrs. Discover it with `GET /rest/api/3/user/search` (same auth as acli), by inspecting existing ADF on an issue (`acli jira workitem view ISSUE-KEY --json --fields description,comment` and any relevant `customfield_*`), or with the helper script below. acli has no `jira user search` (or similar) command; user lookup is REST or the script. Plain text in `--body` / `--description` with `@Display Name` often does **not** produce a real mention or notification; use the Jira UI or ADF JSON via `--body-file` / `--description-file` when mentions must be correct.
+- **Helper script:** From this skill’s directory (alongside `SKILL.md`): `python3 scripts/jira_user_search.py -s https://your-domain.atlassian.net 'search-string'` — uses `/rest/api/3/user/search` only (fast); default `--max-results` is 10 (override with `--max-results N`, combine with `--all-pages` for more). Add `--verbose` to also call `/user` (with expand) and `/user/groups` per match (slower). JSON output includes `elapsed_seconds` for that run (search plus any verbose calls).
+- **Smart links vs link marks:** Pasting URLs can yield `inlineCard` nodes; a closing `)` glued to the URL can be stored inside `attrs.url` and break navigation—prefer spacing, a clean `link` mark `href`, or the issue picker (see `inlineCard` and `link` in the structure guide).
+- **Verify:** After saving, re-fetch the fields you edited and inspect the returned ADF.
 
 ---
 
@@ -227,9 +241,10 @@ If creation fails: check the error message. Common issues include missing requir
 - When changing issue type or status, if the correct target workflow state is unclear, prompt the user.
 - Keep JSON files in /tmp or a user-approved location; clean up after use.
 - Create: always show a draft and get user approval before creating. Work item key is case-sensitive; make the final URL clickable.
+- Comments: always show the full comment draft and get explicit user approval before `acli jira workitem comment create`.
 
 ## Related documentation
 
 - Atlassian CLI: https://developer.atlassian.com/cloud/acli/guides/how-to-get-started/
-- ADF: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
-- acli commands: [workitem edit](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-edit/), [assign](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-assign/), [transition](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-transition/), [comment-create](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-comment-create/), [view](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-view/).
+- [ADF document structure](https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/) (nodes, marks, schema; Jira comments and `textarea` custom fields)
+- acli commands: [workitem edit](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-edit/), [assign](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-assign/), [transition](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-transition/), [comment](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-comment/) (use the `create` subcommand), [view](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-view/).
