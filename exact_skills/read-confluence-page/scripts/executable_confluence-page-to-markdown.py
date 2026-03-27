@@ -4,7 +4,15 @@ Download a Confluence page and convert it to Markdown.
 
 Downloads the page content, converts HTML to Markdown using html2text,
 downloads any file attachments locally, and rewrites attachment links in the
-Markdown to point to the local paths.
+Markdown to point to the local paths. When a page has comments, a second file
+is written with the same basename plus "-with-comments" before ".md": inline
+comments are inserted after the highlighted text in the body, wrapped with the
+same blank-line / two-dash / blank-line marker before and after the thread; after
+the opening marker, a bold ``Comment`` line precedes the API selection shown as a
+Markdown blockquote (`>`), then the comment bodies.
+Page-level (footer) comments
+appear in a "## Comments" section at the end. The primary ".md" file stays
+free of comment content, matching the export behavior before comment support.
 
 When REST API v2 lists non-page children (whiteboards, databases, folders,
 etc.), the script writes stub Markdown files with YAML metadata and product
@@ -35,11 +43,13 @@ Examples:
 """
 
 import argparse
+import base64
 import json
 import os
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 from urllib.parse import parse_qs, unquote, urlparse
 
 try:
@@ -58,7 +68,20 @@ except ImportError:
 # Closing fence for ```json blocks appended to Markdown bodies (Sonar S1192).
 MD_JSON_FENCE_END = "\n```\n"
 
+# Accept header for Confluence REST v2 JSON responses (Sonar S1192).
+HTTP_ACCEPT_JSON = "application/json"
+
+# Wraps each inserted inline thread and separates replies inside it (blank line, --, blank line).
+COMMENT_BLOCK_SEPARATOR = "\n\n--\n\n"
+
+# Label after the opening ``--`` and before the quoted selection (Markdown bold).
+INLINE_COMMENT_LABEL = "**Comment**"
+
 # v2 API collection segment for GET /wiki/api/v2/{segment}/{id} and .../direct-children
+# GET /wiki/rest/api/content/{id}/child/comment — see Confluence REST v1
+# "Content - children and descendants".
+COMMENT_EXPAND = "body.view,version,history"
+
 V2_COLLECTION_BY_TYPE: dict[str, str] = {
     "page": "pages",
     "whiteboard": "whiteboards",
@@ -229,7 +252,7 @@ def parse_confluence_url(url: str) -> tuple:
     sys.exit(1)
 
 
-def absolute_webui_url(base_url: str, webui: str | None) -> str | None:
+def absolute_webui_url(base_url: str, webui: Optional[str]) -> Optional[str]:
     """Turn a Confluence _links.webui path into an absolute URL."""
     if not webui:
         return None
@@ -413,7 +436,7 @@ def fetch_page(base_url: str, page_id: str, auth: tuple) -> dict:
     return resp.json()
 
 
-def fetch_page_nav_position_v2(base_url: str, page_id: str, auth: tuple) -> int | None:
+def fetch_page_nav_position_v2(base_url: str, page_id: str, auth: tuple) -> Optional[int]:
     """Return this page's sibling order (position) from REST v2, or None if unavailable."""
     detail = fetch_v2_by_id(base_url, "pages", page_id, auth)
     if not detail:
@@ -429,12 +452,12 @@ def fetch_page_nav_position_v2(base_url: str, page_id: str, auth: tuple) -> int 
 
 def fetch_v2_by_id(
     base_url: str, collection: str, content_id: str, auth: tuple
-) -> dict | None:
+) -> Optional[dict]:
     """GET /wiki/api/v2/{collection}/{id}. Returns None on non-success."""
     resp = requests.get(
         f"{base_url}/wiki/api/v2/{collection}/{content_id}",
         auth=auth,
-        headers={"Accept": "application/json"},
+        headers={"Accept": HTTP_ACCEPT_JSON},
     )
     if not resp.ok:
         return None
@@ -443,19 +466,19 @@ def fetch_v2_by_id(
 
 def fetch_direct_children_v2(
     base_url: str, collection: str, content_id: str, auth: tuple
-) -> list | None:
+) -> Optional[list]:
     """Paginate GET /wiki/api/v2/{collection}/{id}/direct-children. None if unusable."""
     results: list = []
-    next_url: str | None = (
+    next_url: Optional[str] = (
         f"{base_url}/wiki/api/v2/{collection}/{content_id}/direct-children"
     )
-    params: dict | None = {"limit": 50}
+    params: Optional[dict] = {"limit": 50}
     while next_url:
         resp = requests.get(
             next_url,
             params=params,
             auth=auth,
-            headers={"Accept": "application/json"},
+            headers={"Accept": HTTP_ACCEPT_JSON},
         )
         if resp.status_code in (401, 403, 404):
             return None
@@ -540,6 +563,458 @@ def safe_fetch_attachments(base_url: str, content_id: str, auth: tuple) -> list:
         return []
 
 
+def fetch_comment_content_v1(base_url: str, comment_id: str, auth: tuple) -> dict:
+    """GET v1 comment content with rendered body (for v2 comment ids and reply trees)."""
+    resp = requests.get(
+        f"{base_url}/wiki/rest/api/content/{comment_id}",
+        params={"expand": "body.view,version,history"},
+        auth=auth,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def fetch_v2_page_comment_list(base_url: str, page_id: str, kind: str, auth: tuple) -> list:
+    """GET /wiki/api/v2/pages/{id}/{kind} with pagination; kind is inline-comments or footer-comments.
+
+    See Confluence REST API v2 Comment group:
+    https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-comment/
+    """
+    url = f"{base_url.rstrip('/')}/wiki/api/v2/pages/{page_id}/{kind}"
+    results: list = []
+    first = True
+    while url:
+        resp = requests.get(
+            url,
+            params={"limit": 50} if first else None,
+            auth=auth,
+            headers={"Accept": HTTP_ACCEPT_JSON},
+        )
+        first = False
+        if resp.status_code in (400, 404):
+            return []
+        if not resp.ok:
+            print(
+                f"  Warning: v2 pages/{page_id}/{kind} failed: HTTP {resp.status_code}",
+                file=sys.stderr,
+            )
+            return []
+        data = resp.json()
+        results.extend(data.get("results", []))
+        next_url = (data.get("_links") or {}).get("next")
+        if next_url:
+            url = (
+                next_url
+                if next_url.startswith("http")
+                else f"{base_url.rstrip('/')}{next_url}"
+            )
+        else:
+            url = None
+    return results
+
+
+def safe_fetch_v2_page_comment_list(
+    base_url: str, page_id: str, kind: str, auth: tuple
+) -> list:
+    try:
+        return fetch_v2_page_comment_list(base_url, page_id, kind, auth)
+    except requests.RequestException as exc:
+        print(
+            f"  Warning: could not list v2 {kind} for page {page_id}: {exc}",
+            file=sys.stderr,
+        )
+        return []
+
+
+def inline_anchor_text(v2_comment: dict) -> str:
+    """Text span in the page that the inline comment attaches to (for Markdown search)."""
+    props = v2_comment.get("properties") or {}
+    s = (props.get("inlineOriginalSelection") or "").strip()
+    if s:
+        return s
+    icp = props.get("inlineCommentProperties") or {}
+    if isinstance(icp, dict):
+        return (icp.get("textSelection") or "").strip()
+    return ""
+
+
+def inline_match_index(v2_comment: dict) -> int:
+    """Which occurrence of the anchor text to use (0-based), if the API provides it."""
+    props = v2_comment.get("properties") or {}
+    icp = props.get("inlineCommentProperties") or {}
+    for obj in (icp, props):
+        if not isinstance(obj, dict):
+            continue
+        for key in ("textSelectionMatchIndex",):
+            raw = obj.get(key)
+            if raw is not None:
+                try:
+                    return int(raw)
+                except (TypeError, ValueError):
+                    pass
+    return 0
+
+
+def inline_marker_ref(v2_comment: dict) -> str:
+    """UUID linking the comment to ``<span class=\"inline-comment-marker\" data-ref=\"...\">`` in export_view."""
+    props = v2_comment.get("properties") or {}
+    ref = props.get("inlineMarkerRef") or props.get("inline-marker-ref")
+    return str(ref).strip() if ref else ""
+
+
+def markdown_selection_as_blockquote(selection: str) -> str:
+    """Render Confluence inline selection as a Markdown blockquote (common for quoted excerpts)."""
+    if not selection or not selection.strip():
+        return ""
+    return "\n".join(f"> {line}" for line in selection.splitlines())
+
+
+def _find_nth_occurrence(haystack: str, needle: str, n: int) -> int:
+    """Index of the n-th occurrence of needle (0-based n), or -1."""
+    if not needle:
+        return -1
+    start = 0
+    for i in range(n + 1):
+        idx = haystack.find(needle, start)
+        if idx < 0:
+            return -1
+        if i == n:
+            return idx
+        start = idx + max(len(needle), 1)
+    return -1
+
+
+def _ellipsis_truncated_prefix(anchor: str) -> Optional[str]:
+    """When the v2 selection ends with an ellipsis, the API often truncates; Markdown has full text."""
+    s = anchor.rstrip()
+    if len(s) >= 3 and s.endswith("..."):
+        p = s[:-3].rstrip()
+        return p if p else None
+    if s.endswith("\u2026"):
+        p = s[:-1].rstrip()
+        return p if p else None
+    return None
+
+
+def _insertion_index_after_anchor(markdown: str, anchor: str, match_index: int) -> int:
+    """Character offset after the highlighted span in Markdown, or -1 if not found."""
+    if not anchor:
+        return -1
+    idx = _find_nth_occurrence(markdown, anchor, match_index)
+    if idx >= 0:
+        return idx + len(anchor)
+    prefix = _ellipsis_truncated_prefix(anchor)
+    if prefix is None:
+        return -1
+    idx = _find_nth_occurrence(markdown, prefix, match_index)
+    if idx >= 0:
+        return idx + len(prefix)
+    return -1
+
+
+def markdown_basename_with_comments_suffix(md_name: str) -> str:
+    """e.g. 00000057-Page.md -> 00000057-Page-with-comments.md"""
+    if md_name.endswith(".md"):
+        return md_name[:-3] + "-with-comments.md"
+    return md_name + "-with-comments.md"
+
+
+def comment_tree_from_v1_root(base_url: str, root_v1: dict, auth: tuple) -> dict:
+    """Nested {comment, replies} from a v1 comment object (recursive replies)."""
+    cid = str(root_v1["id"])
+    children = safe_fetch_comment_children(base_url, cid, auth)
+    return {
+        "comment": root_v1,
+        "replies": [comment_tree_from_v1_root(base_url, ch, auth) for ch in children],
+    }
+
+
+def format_comment_block_md(
+    base_url: str,
+    c_v1: dict,
+    downloaded_attachments: list,
+) -> str:
+    """One comment as Markdown: author, time, body (attachment links rewritten)."""
+    author = comment_author_display(c_v1)
+    when = comment_timestamp(c_v1)
+    html = comment_body_html(c_v1)
+    body = html_to_markdown(html)
+    body = rewrite_attachment_links(body, downloaded_attachments, base_url)
+    return f"**{author}** ({when})\n\n{body.strip()}"
+
+
+def render_inline_thread_flat(
+    tree: dict,
+    base_url: str,
+    downloaded_attachments: list,
+    *,
+    highlight_text: str = "",
+) -> str:
+    """Depth-first thread; ``INLINE_COMMENT_LABEL``, optional blockquote, then COMMENT_BLOCK_SEPARATOR between replies."""
+    parts: list[str] = []
+
+    def walk(node: dict) -> None:
+        parts.append(format_comment_block_md(base_url, node["comment"], downloaded_attachments))
+        for r in node.get("replies") or []:
+            walk(r)
+
+    walk(tree)
+    thread_md = COMMENT_BLOCK_SEPARATOR.join(parts)
+    highlight = markdown_selection_as_blockquote(highlight_text)
+    if highlight:
+        return f"{INLINE_COMMENT_LABEL}\n\n{highlight}\n\n{thread_md}"
+    return f"{INLINE_COMMENT_LABEL}\n\n{thread_md}"
+
+
+def insert_inline_comments_into_markdown(
+    markdown: str,
+    inline_v2_list: list,
+    base_url: str,
+    auth: tuple,
+    downloaded_attachments: list,
+    page_export_html: Optional[str] = None,
+) -> str:
+    """Insert each inline thread after its anchor text; unanchored threads go at EOF.
+
+    If ``page_export_html`` is set, the full highlight is taken from the inline
+    comment marker span (see ``inlineMarkerRef``) so placement matches the same
+    ``html_to_markdown`` output as the page body. Otherwise the v2 selection
+    string is used; if it ends with ``...`` (truncation), matching falls back to
+    a prefix (see ``_insertion_index_after_anchor``).
+    """
+    placements: list[tuple[int, str]] = []
+    for ic in inline_v2_list:
+        cid = str(ic.get("id", ""))
+        if not cid:
+            continue
+        placement_anchor, highlight_text = _placement_anchor_and_highlight_for_inline(
+            ic, page_export_html
+        )
+        try:
+            root_v1 = fetch_comment_content_v1(base_url, cid, auth)
+        except requests.RequestException:
+            continue
+        tree = comment_tree_from_v1_root(base_url, root_v1, auth)
+        block = render_inline_thread_flat(
+            tree,
+            base_url,
+            downloaded_attachments,
+            highlight_text=highlight_text,
+        )
+        if not block.strip():
+            continue
+        suffix = COMMENT_BLOCK_SEPARATOR + block + COMMENT_BLOCK_SEPARATOR
+        if not placement_anchor:
+            placements.append((len(markdown), suffix))
+            continue
+        end = _insertion_index_after_anchor(
+            markdown, placement_anchor, inline_match_index(ic)
+        )
+        if end < 0:
+            placements.append((len(markdown), suffix))
+            continue
+        placements.append((end, suffix))
+    # Insert from the end so indices stay valid; merge same insertion points in order.
+    by_end: dict[int, list[str]] = {}
+    for end, txt in placements:
+        by_end.setdefault(end, []).append(txt)
+    for end in sorted(by_end.keys(), reverse=True):
+        merged = "".join(by_end[end])
+        markdown = markdown[:end] + merged + markdown[end:]
+    return markdown
+
+
+def fetch_comment_children(base_url: str, parent_id: str, auth: tuple) -> list:
+    """Fetch all direct child comments for a page or comment (paginated)."""
+    results: list = []
+    start = 0
+    limit = 50
+    while True:
+        resp = requests.get(
+            f"{base_url}/wiki/rest/api/content/{parent_id}/child/comment",
+            params={
+                "start": start,
+                "limit": limit,
+                "expand": COMMENT_EXPAND,
+            },
+            auth=auth,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        page = data.get("results", [])
+        results.extend(page)
+        if len(page) < limit:
+            break
+        start += limit
+    return results
+
+
+def safe_fetch_comment_children(base_url: str, parent_id: str, auth: tuple) -> list:
+    """Like fetch_comment_children but does not abort the export on HTTP errors."""
+    try:
+        return fetch_comment_children(base_url, parent_id, auth)
+    except requests.RequestException as exc:
+        print(
+            f"  Warning: could not list comments for {parent_id}: {exc}",
+            file=sys.stderr,
+        )
+        return []
+
+
+def comment_body_html(comment: dict) -> str:
+    """Prefer rendered HTML for comment bodies (same idea as export_view for pages)."""
+    body = comment.get("body") or {}
+    for key in ("export_view", "view", "storage"):
+        part = body.get(key)
+        if isinstance(part, dict) and part.get("value"):
+            return str(part["value"])
+    return ""
+
+
+def comment_author_display(comment: dict) -> str:
+    hist = comment.get("history") or {}
+    created = hist.get("createdBy")
+    if isinstance(created, dict):
+        return (
+            created.get("displayName")
+            or created.get("publicName")
+            or created.get("email")
+            or created.get("username")
+            or "Unknown"
+        )
+    return "Unknown"
+
+
+def comment_timestamp(comment: dict) -> str:
+    ver = comment.get("version") or {}
+    when = ver.get("when")
+    if when:
+        return str(when)
+    hist = comment.get("history") or {}
+    if hist.get("createdDate"):
+        return str(hist["createdDate"])
+    return ""
+
+
+def _heading_for_depth(depth: int) -> str:
+    level = min(2 + depth, 6)
+    return "#" * level
+
+
+def render_comment_tree_markdown(
+    tree: list,
+    base_url: str,
+    downloaded_attachments: list,
+    depth: int,
+    *,
+    attachment_rel_prefix: str = "",
+) -> str:
+    """Render nested comments as Markdown with increasing heading depth."""
+    parts: list[str] = []
+    for node in tree:
+        c = node["comment"]
+        replies = node.get("replies") or []
+        hid = _heading_for_depth(depth)
+        title = (c.get("title") or "").strip() or f"Comment {c.get('id', '')}"
+        author = comment_author_display(c)
+        when = comment_timestamp(c)
+        html = comment_body_html(c)
+        md = html_to_markdown(html)
+        md = rewrite_attachment_links(
+            md,
+            downloaded_attachments,
+            base_url,
+            attachment_rel_prefix=attachment_rel_prefix,
+        )
+        meta_lines = [f"**Author:** {author}"]
+        if when:
+            meta_lines.append(f"**When:** {when}")
+        meta_block = "  \n".join(meta_lines)
+        parts.append(f"\n{hid} {title}\n\n{meta_block}\n\n{md.strip()}\n")
+        if replies:
+            parts.append(
+                render_comment_tree_markdown(
+                    replies,
+                    base_url,
+                    downloaded_attachments,
+                    depth + 1,
+                    attachment_rel_prefix=attachment_rel_prefix,
+                )
+            )
+    return "".join(parts)
+
+
+def render_footer_comments_section_markdown(
+    footer_v2_list: list,
+    base_url: str,
+    auth: tuple,
+    downloaded_attachments: list,
+) -> str:
+    """## Comments plus threaded footer comments (headings start at ###)."""
+    if not footer_v2_list:
+        return ""
+    parts: list[str] = ["\n\n## Comments\n\n"]
+    for fc in footer_v2_list:
+        cid = str(fc.get("id", ""))
+        if not cid:
+            continue
+        try:
+            root_v1 = fetch_comment_content_v1(base_url, cid, auth)
+        except requests.RequestException:
+            continue
+        tree = comment_tree_from_v1_root(base_url, root_v1, auth)
+        parts.append(
+            render_comment_tree_markdown(
+                [tree],
+                base_url,
+                downloaded_attachments,
+                1,
+                attachment_rel_prefix="",
+            )
+        )
+    return "".join(parts)
+
+
+def maybe_write_markdown_with_comments(
+    base_url: str,
+    content_id: str,
+    output_dir: Path,
+    md_name: str,
+    header: str,
+    title: str,
+    markdown_body: str,
+    child_section: str,
+    downloaded_attachments: list,
+    auth: tuple,
+    page_export_html: Optional[str] = None,
+) -> None:
+    """If v2 reports inline or footer comments, write *-with-comments.md next to the base file."""
+    inline_list = safe_fetch_v2_page_comment_list(
+        base_url, content_id, "inline-comments", auth
+    )
+    footer_list = safe_fetch_v2_page_comment_list(
+        base_url, content_id, "footer-comments", auth
+    )
+    if not inline_list and not footer_list:
+        return
+    print("  Building -with-comments variant (v2 inline/footer) ...")
+    md_with = insert_inline_comments_into_markdown(
+        markdown_body,
+        inline_list,
+        base_url,
+        auth,
+        downloaded_attachments,
+        page_export_html=page_export_html,
+    )
+    md_with = md_with + child_section
+    md_with += render_footer_comments_section_markdown(
+        footer_list, base_url, auth, downloaded_attachments
+    )
+    out_path = output_dir / markdown_basename_with_comments_suffix(md_name)
+    out_path.write_text(header + f"# {title}\n\n" + md_with, encoding="utf-8")
+    print(f"  Wrote {out_path}")
+
+
 def download_attachment(base_url: str, attachment: dict, output_dir: Path, auth: tuple) -> Path:
     """Download a single attachment and return its local path."""
     filename = attachment["title"]
@@ -569,12 +1044,106 @@ def html_to_markdown(html: str) -> str:
     return converter.handle(html)
 
 
+def _span_inner_html_balanced(html: str, start: int) -> Optional[str]:
+    """Return inner HTML of a ``<span>`` opened just before ``start``, handling nested spans."""
+    depth = 1
+    i = start
+    while i < len(html) and depth:
+        nxt = html.find("<", i)
+        if nxt < 0:
+            return None
+        if html[nxt : nxt + 7].lower() == "</span>":
+            depth -= 1
+            if depth == 0:
+                return html[start:nxt]
+            i = nxt + 7
+            continue
+        if re.match(r"<span\b", html[nxt:], re.I):
+            depth += 1
+        i = nxt + 1
+    return None
+
+
+def _inner_html_span_inline_marker(export_html: str, marker_ref: str) -> Optional[str]:
+    """Inner HTML for ``export_view`` inline comment markers (rendered ``span``)."""
+    for m in re.finditer(r"<span\b[^>]*>", export_html, re.I):
+        tag = m.group(0)
+        if "inline-comment-marker" not in tag.lower():
+            continue
+        if not re.search(
+            r"data-ref\s*=\s*['\"]" + re.escape(marker_ref) + r"['\"]",
+            tag,
+        ):
+            continue
+        return _span_inner_html_balanced(export_html, m.end())
+    return None
+
+
+def _inner_html_ac_inline_marker(export_html: str, marker_ref: str) -> Optional[str]:
+    """Inner HTML for storage-style ``ac:inline-comment-marker`` (if present in HTML)."""
+    m = re.search(
+        r"<ac:inline-comment-marker\b[^>]*\bac:ref\s*=\s*['\"]"
+        + re.escape(marker_ref)
+        + r"['\"][^>]*>",
+        export_html,
+        re.I,
+    )
+    if not m:
+        return None
+    start = m.end()
+    lower = export_html.lower()
+    close = "</ac:inline-comment-marker>"
+    end = lower.find(close, start)
+    if end < 0:
+        return None
+    return export_html[start:end]
+
+
+def selection_markdown_from_page_export_html(export_html: str, marker_ref: str) -> Optional[str]:
+    """Convert the marked highlight in page HTML to Markdown (same pipeline as the full page)."""
+    if not export_html or not marker_ref:
+        return None
+    inner = _inner_html_span_inline_marker(export_html, marker_ref)
+    if inner is None:
+        inner = _inner_html_ac_inline_marker(export_html, marker_ref)
+    if inner is None:
+        return None
+    md = html_to_markdown(inner).strip()
+    return md if md else None
+
+
+def _placement_anchor_and_highlight_for_inline(
+    ic: dict,
+    page_export_html: Optional[str],
+) -> tuple[str, str]:
+    """Prefer full highlight from export_view HTML (``inlineMarkerRef``); else v2 selection string."""
+    anchor_api = inline_anchor_text(ic)
+    placement = anchor_api
+    highlight = anchor_api
+    if not page_export_html:
+        return placement, highlight
+    marker_ref = inline_marker_ref(ic)
+    if not marker_ref:
+        return placement, highlight
+    full_sel = selection_markdown_from_page_export_html(page_export_html, marker_ref)
+    if full_sel:
+        placement = full_sel
+        highlight = full_sel
+    return placement, highlight
+
+
 def rewrite_attachment_links(
     markdown: str,
     attachments: list,
     base_url: str,
+    *,
+    attachment_rel_prefix: str = "",
 ) -> str:
-    """Replace Confluence attachment URLs in Markdown with relative local paths."""
+    """Replace Confluence attachment URLs in Markdown with relative local paths.
+
+    attachment_rel_prefix is prepended before attachments/ (e.g. "../" from a
+    subdirectory).
+    """
     for attachment in attachments:
         filename = attachment["title"]
         download_path = attachment["_links"]["download"]
@@ -584,7 +1153,7 @@ def rewrite_attachment_links(
             re.escape(f"/wiki{download_path}"),
             re.escape(download_path),
         ]
-        local_rel = f"attachments/{filename}"
+        local_rel = f"{attachment_rel_prefix}attachments/{filename}"
         for pattern in patterns:
             markdown = re.sub(pattern, local_rel, markdown)
     return markdown
@@ -615,7 +1184,7 @@ def child_folder_name(page_id: str, title: str) -> str:
     return name[:120]
 
 
-def coalesce_child_position(child: dict) -> int | None:
+def coalesce_child_position(child: dict) -> Optional[int]:
     """Read sibling rank from a v2 child payload, if present."""
     for key in ("childPosition", "position"):
         raw = child.get(key)
@@ -628,12 +1197,12 @@ def coalesce_child_position(child: dict) -> int | None:
 
 
 def nav_position_for_page(
-    position_cache: dict[str, int | None],
+    position_cache: dict[str, Optional[int]],
     base_url: str,
     page_id: str,
     auth: tuple,
-    sibling_position: int | None,
-) -> int | None:
+    sibling_position: Optional[int],
+) -> Optional[int]:
     """Resolve nav position: explicit from parent list, else cache, else GET v2 page."""
     if sibling_position is not None:
         return sibling_position
@@ -644,7 +1213,7 @@ def nav_position_for_page(
     return pos
 
 
-def markdown_basename(nav_position: int | None, title: str) -> str:
+def markdown_basename(nav_position: Optional[int], title: str) -> str:
     """Markdown filename; zero-padded position prefix for lexical sort like the site tree."""
     slug = slugify(title) or "page"
     if nav_position is not None:
@@ -661,7 +1230,7 @@ def _child_sort_tuple(child: dict) -> tuple:
     return (1, 0, title_key, cid)
 
 
-def v2_type_to_collection(content_type: str) -> str | None:
+def v2_type_to_collection(content_type: str) -> Optional[str]:
     """Map v2 child type string to API collection name."""
     t = str(content_type or "").lower().strip()
     return V2_COLLECTION_BY_TYPE.get(t)
@@ -704,7 +1273,7 @@ def sorted_direct_children(base_url: str, page_id: str, auth: tuple) -> list:
 
 
 def markdown_section_child_links(
-    position_cache: dict[str, int | None],
+    position_cache: dict[str, Optional[int]],
     base_url: str,
     auth: tuple,
     children: list,
@@ -766,7 +1335,7 @@ def recurse_export_children(
     output_dir: Path,
     auth: tuple,
     path_stack: list[str],
-    position_cache: dict[str, int | None],
+    position_cache: dict[str, Optional[int]],
 ) -> None:
     """Export each direct child (page, folder, whiteboard, database, etc.)."""
     for c in children:
@@ -825,7 +1394,7 @@ def export_generic_child_stub(
     child: dict,
     output_dir: Path,
     path_stack: list[str],
-    sibling_position: int | None,
+    sibling_position: Optional[int],
 ) -> None:
     """Stub for embeds and other v2 types when we only have the parent listing."""
     cid = str(child["id"])
@@ -889,7 +1458,7 @@ def _v2_leaf_frontmatter_and_title(
     content_type: str,
     content_id: str,
     title_hint: str,
-    detail: dict | None,
+    detail: Optional[dict],
     coll: str,
 ) -> tuple[dict, str]:
     if detail:
@@ -911,8 +1480,8 @@ def _v2_leaf_frontmatter_and_title(
 
 
 def _v2_leaf_nav_position(
-    sibling_position: int | None, detail: dict | None
-) -> int | None:
+    sibling_position: Optional[int], detail: Optional[dict]
+) -> Optional[int]:
     if sibling_position is not None:
         return sibling_position
     if not detail or detail.get("position") is None:
@@ -924,7 +1493,7 @@ def _v2_leaf_nav_position(
 
 
 def _v2_leaf_intro_body(
-    title: str, content_type: str, content_id: str, fm: dict, detail: dict | None
+    title: str, content_type: str, content_id: str, fm: dict, detail: Optional[dict]
 ) -> str:
     body = f"# {title}\n\n"
     body += (
@@ -944,7 +1513,7 @@ def _v2_leaf_nested_children(
     coll: str,
     content_id: str,
     auth: tuple,
-    position_cache: dict[str, int | None],
+    position_cache: dict[str, Optional[int]],
     body: str,
 ) -> tuple[str, list]:
     if coll not in ("whiteboards", "databases"):
@@ -968,8 +1537,8 @@ def export_v2_leaf_stub(
     output_dir: Path,
     auth: tuple,
     path_stack: list[str],
-    position_cache: dict[str, int | None],
-    sibling_position: int | None,
+    position_cache: dict[str, Optional[int]],
+    sibling_position: Optional[int],
 ) -> None:
     """Fetch v2 metadata for whiteboard or database and write a stub Markdown file."""
     key = f"{content_type}:{content_id}"
@@ -992,11 +1561,12 @@ def export_v2_leaf_stub(
             print(f"  Found {len(atts)} attachment(s) for {content_type} {content_id}.")
             download_attachments_for_page(base_url, atts, output_dir, auth)
         nav_pos = _v2_leaf_nav_position(sibling_position, detail)
+        md_name = markdown_basename(nav_pos, title)
         body = _v2_leaf_intro_body(title, content_type, content_id, fm, detail)
         body, nested_children = _v2_leaf_nested_children(
             base_url, coll, content_id, auth, position_cache, body
         )
-        out_path = output_dir / markdown_basename(nav_pos, title)
+        out_path = output_dir / md_name
         out_path.write_text(format_yaml_frontmatter(fm) + "\n" + body, encoding="utf-8")
         print(f"  Wrote {out_path}")
         if nested_children:
@@ -1008,7 +1578,7 @@ def export_v2_leaf_stub(
 
 
 def _folder_title_and_frontmatter(
-    base_url: str, folder_id: str, detail: dict | None
+    base_url: str, folder_id: str, detail: Optional[dict]
 ) -> tuple[str, dict]:
     title = str(detail.get("title", folder_id)) if detail else folder_id
     if detail:
@@ -1028,8 +1598,8 @@ def _folder_title_and_frontmatter(
 
 
 def _folder_nav_position(
-    sibling_position: int | None, detail: dict | None
-) -> int | None:
+    sibling_position: Optional[int], detail: Optional[dict]
+) -> Optional[int]:
     if sibling_position is not None:
         return sibling_position
     if not detail or detail.get("position") is None:
@@ -1044,8 +1614,8 @@ def _folder_body_markdown(
     title: str,
     recurse_children: bool,
     children: list,
-    detail: dict | None,
-    position_cache: dict[str, int | None],
+    detail: Optional[dict],
+    position_cache: dict[str, Optional[int]],
     base_url: str,
     auth: tuple,
 ) -> str:
@@ -1068,8 +1638,8 @@ def process_folder(
     *,
     recurse_children: bool,
     path_stack: list[str],
-    position_cache: dict[str, int | None],
-    sibling_position: int | None = None,
+    position_cache: dict[str, Optional[int]],
+    sibling_position: Optional[int] = None,
 ) -> None:
     """Export a folder: metadata stub, optional attachments, recurse into v2 children."""
     folder_id = str(folder_id)
@@ -1091,6 +1661,7 @@ def process_folder(
             print(f"Found {len(atts)} attachment(s).")
             download_attachments_for_page(base_url, atts, output_dir, auth)
         nav_pos = _folder_nav_position(sibling_position, detail)
+        md_name = markdown_basename(nav_pos, title)
         children: list = []
         if recurse_children:
             children = fetch_direct_children_v2(base_url, "folders", folder_id, auth) or []
@@ -1098,7 +1669,7 @@ def process_folder(
         body = _folder_body_markdown(
             title, recurse_children, children, detail, position_cache, base_url, auth
         )
-        out_path = output_dir / markdown_basename(nav_pos, title)
+        out_path = output_dir / md_name
         out_path.write_text(format_yaml_frontmatter(fm) + "\n" + body, encoding="utf-8")
         print(f"  Wrote {out_path}")
         if recurse_children and children:
@@ -1115,8 +1686,8 @@ def _write_page_v1_fetch_error_stub(
     exc: requests.HTTPError,
     output_dir: Path,
     auth: tuple,
-    position_cache: dict[str, int | None],
-    sibling_position: int | None,
+    position_cache: dict[str, Optional[int]],
+    sibling_position: Optional[int],
 ) -> None:
     """Write Markdown when v1 content GET fails (permissions, wrong type, etc.)."""
     print(
@@ -1162,11 +1733,15 @@ def _process_page_success_export(
     auth: tuple,
     recurse_children: bool,
     path_stack: list[str],
-    position_cache: dict[str, int | None],
-    sibling_position: int | None,
+    position_cache: dict[str, Optional[int]],
+    sibling_position: Optional[int],
 ) -> None:
     """Convert a fetched v1 page dict to Markdown, attachments, and child exports."""
     title = page.get("title", f"page-{page_id}")
+    nav_pos = nav_position_for_page(
+        position_cache, base_url, page_id, auth, sibling_position
+    )
+    md_name = markdown_basename(nav_pos, title)
     html_body = page.get("body", {}).get("export_view", {}).get("value", "")
     fm_page = build_page_frontmatter(page, base_url)
     print("Fetching attachments ...")
@@ -1174,21 +1749,34 @@ def _process_page_success_export(
     print(f"Found {len(attachments)} attachment(s).")
     downloaded = download_attachments_for_page(base_url, attachments, output_dir, auth)
     print("Converting HTML to Markdown ...")
-    markdown = html_to_markdown(html_body)
-    markdown = rewrite_attachment_links(markdown, downloaded, base_url)
+    markdown_body = html_to_markdown(html_body)
+    markdown_body = rewrite_attachment_links(markdown_body, downloaded, base_url)
+    child_section = ""
     children = []
     if recurse_children:
         children = sorted_direct_children(base_url, page_id, auth)
-        markdown += markdown_section_child_links(
+        child_section = markdown_section_child_links(
             position_cache, base_url, auth, children
         )
-    nav_pos = nav_position_for_page(
-        position_cache, base_url, page_id, auth, sibling_position
-    )
-    output_path = output_dir / markdown_basename(nav_pos, title)
+    output_path = output_dir / md_name
     header = format_yaml_frontmatter(fm_page)
-    output_path.write_text(header + f"# {title}\n\n" + markdown, encoding="utf-8")
+    output_path.write_text(
+        header + f"# {title}\n\n" + markdown_body + child_section, encoding="utf-8"
+    )
     print(f"  Wrote {output_path}")
+    maybe_write_markdown_with_comments(
+        base_url,
+        page_id,
+        output_dir,
+        md_name,
+        header,
+        title,
+        markdown_body,
+        child_section,
+        downloaded,
+        auth,
+        html_body,
+    )
     if children:
         recurse_export_children(
             base_url, children, output_dir, auth, path_stack, position_cache
@@ -1203,8 +1791,8 @@ def process_page(
     *,
     recurse_children: bool,
     path_stack: list[str],
-    position_cache: dict[str, int | None],
-    sibling_position: int | None = None,
+    position_cache: dict[str, Optional[int]],
+    sibling_position: Optional[int] = None,
 ) -> None:
     """Fetch one page, write Markdown and attachments, optionally recurse into children."""
     page_id = str(page_id)
@@ -1277,7 +1865,8 @@ Markdown filenames:
 
 Recursion (default):
   Child content is written under children/<contentId>-<titleSlug>/ with the same
-  layout (Markdown file, attachments/, nested children/). Each exported file starts
+  layout (Markdown file, attachments/, nested children/). Pages with v2 inline or
+  footer comments also get a sibling *-with-comments.md. Each exported file starts
   with YAML front matter (ids, title, space, labels, links, etc.) for searching.
   Child pages are linked under ## Child pages; whiteboards, databases, folders,
   and other types appear under ## Other Confluence content with stub files.
@@ -1307,7 +1896,7 @@ Recursion (default):
 
     output_dir = Path(args.output_dir if args.output_dir else dir_from_url(args.url))
     path_stack: list[str] = []
-    position_cache: dict[str, int | None] = {}
+    position_cache: dict[str, Optional[int]] = {}
     process_page(
         base_url,
         page_id,
