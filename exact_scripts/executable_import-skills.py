@@ -7,10 +7,10 @@ directories (folders containing subdirectories with SKILL.md files).
 Lists any skills not already managed by chezmoi and allows interactive
 multi-select to import them.
 
-Imported skills are set up following the single-source-of-truth pattern:
-  - Source templates stored as .skills-*.md.tmpl and .scripts-*.tmpl
-  - Template references created in dot_cursor, dot_claude, and dot_codex
-  - Running chezmoi apply deploys identical copies to all three tools
+Imported skills are copied directly into exact_skills/<name>/ in the
+chezmoi source directory. Symlinks from ~/.claude/skills, ~/.cursor/skills,
+and ~/.codex/skills all point to ~/skills/, so a single copy serves all
+three tools.
 
 Usage:
   import-skills.py [OPTIONS]
@@ -26,23 +26,22 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 CHEZMOI_DIR = Path.home() / ".local" / "share" / "chezmoi"
-TOOLS = ("cursor", "claude", "codex")
+SKILLS_DIR = CHEZMOI_DIR / "exact_skills"
 SKILL_FILENAME = "SKILL.md"
 SCRIPTS_SUBDIR = "scripts"
 
 
 def get_chezmoi_skill_names() -> Set[str]:
     """Return the set of skill names already managed by chezmoi."""
-    skills_dir = CHEZMOI_DIR / "dot_claude" / "exact_skills"
-    if not skills_dir.is_dir():
+    if not SKILLS_DIR.is_dir():
         return set()
     return {
         entry.name
-        for entry in skills_dir.iterdir()
-        if entry.is_dir() and (entry / f"{SKILL_FILENAME}.tmpl").is_file()
+        for entry in SKILLS_DIR.iterdir()
+        if entry.is_dir() and (entry / SKILL_FILENAME).is_file()
     }
 
 
@@ -54,7 +53,6 @@ def find_skills_dirs(scan_dirs: List[Path]) -> List[Path]:
     for base in scan_dirs:
         if not base.is_dir():
             continue
-        # Look for 'skills' directories within the base and one level of tool dirs
         candidates = [base / "skills"]
         for tool_dir in (".cursor", ".claude", ".codex"):
             candidates.append(base / tool_dir / "skills")
@@ -65,7 +63,6 @@ def find_skills_dirs(scan_dirs: List[Path]) -> List[Path]:
             resolved = candidate.resolve()
             if resolved in seen:
                 continue
-            # Verify it contains at least one skill subdirectory
             has_skill = any(
                 (entry / SKILL_FILENAME).is_file()
                 for entry in candidate.iterdir()
@@ -186,135 +183,37 @@ def prompt_selection(
             sys.exit(1)
 
 
-def classify_skill_files(
-    skill_dir: Path,
-) -> Tuple[Path, List[Path], List[Path]]:
-    """Classify files in a skill directory.
-
-    Returns:
-        (skill_md, extra_mds, scripts)
-        - skill_md: the SKILL.md file
-        - extra_mds: additional .md files in the skill root
-        - scripts: executable files in the scripts/ subdirectory
-    """
-    skill_md = skill_dir / SKILL_FILENAME
-    extra_mds: List[Path] = []
-    scripts: List[Path] = []
-
-    for entry in sorted(skill_dir.iterdir()):
-        if entry.is_file() and entry.name != SKILL_FILENAME:
-            if entry.suffix == ".md":
-                extra_mds.append(entry)
-            # Other non-md files at the root are treated as extra content
-            elif entry.name not in (".DS_Store",):
-                extra_mds.append(entry)
-
-    scripts_dir = skill_dir / SCRIPTS_SUBDIR
-    if scripts_dir.is_dir():
-        for entry in sorted(scripts_dir.iterdir()):
-            if entry.is_file() and entry.name not in (".DS_Store",):
-                scripts.append(entry)
-
-    return skill_md, extra_mds, scripts
-
-
-def derive_source_template_name(skill_name: str, filename: str) -> str:
-    """Derive the chezmoi source template name for a skill file.
-
-    SKILL.md -> .skills-<skill_name>.md.tmpl
-    extra-doc.md -> .skills-<skill_name>-<stem>.md.tmpl
-    """
-    stem = Path(filename).stem
-    suffix = Path(filename).suffix
-
-    if filename == SKILL_FILENAME:
-        return f".skills-{skill_name}{suffix}.tmpl"
-
-    return f".skills-{skill_name}-{stem}{suffix}.tmpl"
-
-
-def derive_script_template_name(filename: str) -> str:
-    """Derive the chezmoi source template name for a script file.
-
-    my-script.py -> .scripts-my-script.py.tmpl
-    """
-    return f".scripts-{filename}.tmpl"
-
-
-def derive_tool_script_name(filename: str) -> str:
-    """Derive the chezmoi tool-directory name for a script.
-
-    my-script.py -> executable_my-script.py.tmpl
-    """
-    return f"executable_{filename}.tmpl"
-
-
-def derive_tool_extra_name(filename: str) -> str:
-    """Derive the chezmoi tool-directory name for an extra file.
-
-    extra-doc.md -> extra-doc.md.tmpl
-    """
-    return f"{filename}.tmpl"
-
-
 def plan_skill_import(
     skill_name: str, skill_dir: Path
 ) -> List[Tuple[str, Path, Path]]:
-    """Plan the import actions for a single skill. Returns a list of actions."""
-    skill_md, extra_mds, scripts = classify_skill_files(skill_dir)
+    """Plan the import actions for a single skill.
 
+    Returns a list of (action_type, source_path, dest_path) tuples.
+    Files are copied directly into exact_skills/<name>/.
+    Scripts get the executable_ prefix for chezmoi.
+    """
     actions: List[Tuple[str, Path, Path]] = []
+    dest_base = SKILLS_DIR / skill_name
 
-    # 1. Create source template for SKILL.md
-    src_tmpl_name = derive_source_template_name(skill_name, SKILL_FILENAME)
-    src_tmpl_path = CHEZMOI_DIR / src_tmpl_name
-    actions.append(("source-template", skill_md, src_tmpl_path))
+    for entry in sorted(skill_dir.rglob("*")):
+        if not entry.is_file():
+            continue
+        if entry.name in (".DS_Store",):
+            continue
 
-    # 2. Create source templates for extra markdown/content files
-    extra_src_names: Dict[str, str] = {}
-    for extra in extra_mds:
-        src_name = derive_source_template_name(skill_name, extra.name)
-        src_path = CHEZMOI_DIR / src_name
-        actions.append(("source-template", extra, src_path))
-        extra_src_names[extra.name] = src_name
+        rel = entry.relative_to(skill_dir)
 
-    # 3. Create source templates for scripts
-    script_src_names: Dict[str, str] = {}
-    for script in scripts:
-        src_name = derive_script_template_name(script.name)
-        src_path = CHEZMOI_DIR / src_name
-        actions.append(("source-template", script, src_path))
-        script_src_names[script.name] = src_name
+        # Scripts need the executable_ prefix for chezmoi
+        if rel.parts[0] == SCRIPTS_SUBDIR and len(rel.parts) == 2:
+            script_name = rel.parts[1]
+            if not script_name.startswith("executable_"):
+                dest = dest_base / SCRIPTS_SUBDIR / f"executable_{script_name}"
+            else:
+                dest = dest_base / rel
+        else:
+            dest = dest_base / rel
 
-    # 4. Create tool-specific template references for each tool
-    for tool in TOOLS:
-        tool_skill_dir = (
-            CHEZMOI_DIR / f"dot_{tool}" / "exact_skills" / skill_name
-        )
-
-        # SKILL.md.tmpl reference
-        actions.append((
-            "tool-reference",
-            Path(src_tmpl_name),
-            tool_skill_dir / f"{SKILL_FILENAME}.tmpl",
-        ))
-
-        # Extra file references
-        for extra in extra_mds:
-            actions.append((
-                "tool-reference",
-                Path(extra_src_names[extra.name]),
-                tool_skill_dir / derive_tool_extra_name(extra.name),
-            ))
-
-        # Script references
-        if scripts:
-            for script in scripts:
-                actions.append((
-                    "tool-reference",
-                    Path(script_src_names[script.name]),
-                    tool_skill_dir / SCRIPTS_SUBDIR / derive_tool_script_name(script.name),
-                ))
+        actions.append(("copy", entry, dest))
 
     return actions
 
@@ -326,25 +225,14 @@ def print_action_preview(
     print(f"  {skill_name}:")
     for action_type, source, dest in actions:
         dest_rel = str(dest.relative_to(CHEZMOI_DIR))
-        if action_type == "source-template":
-            print(f"    Copy {source.name} -> {dest_rel}")
-        elif action_type == "tool-reference":
-            print(f"    Create reference {dest_rel}")
+        print(f"    Copy {source.name} -> {dest_rel}")
 
 
 def execute_actions(actions: List[Tuple[str, Path, Path]]) -> None:
     """Execute the planned import actions."""
     for action_type, source, dest in actions:
-        if action_type == "source-template":
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, dest)
-        elif action_type == "tool-reference":
-            include_name = str(source)
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(
-                f'{{{{ include "{include_name}" }}}}\n',
-                encoding="utf-8",
-            )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, dest)
 
 
 def confirm(prompt: str) -> bool:
@@ -397,14 +285,12 @@ Examples:
     home = Path.home()
     cwd = Path.cwd()
 
-    # Directories to scan
     scan_dirs = [home, cwd] + args.scan_dir
 
     print("Scanning for skills...")
     for d in scan_dirs:
         print(f"  {d}")
 
-    # Find skills directories
     skills_dirs = find_skills_dirs(scan_dirs)
 
     if not skills_dirs:
@@ -415,45 +301,37 @@ Examples:
     for d in skills_dirs:
         print(f"  {d}")
 
-    # Get existing chezmoi skills
     existing = get_chezmoi_skill_names()
 
-    # Discover importable skills
     importable = discover_importable_skills(skills_dirs, existing)
 
     if not importable:
         print("\nAll discovered skills are already in chezmoi.")
         sys.exit(0)
 
-    # Interactive selection
     selected = prompt_selection(importable)
     if not selected:
         print("\nNo skills selected.")
         sys.exit(0)
 
-    # Plan all imports
     planned: List[Tuple[str, Path, List[Tuple[str, Path, Path]]]] = []
     for skill_name, skill_dir in selected:
         actions = plan_skill_import(skill_name, skill_dir)
         planned.append((skill_name, skill_dir, actions))
 
-    # Show preview
     print("\nThe following changes will be made:")
     for skill_name, _skill_dir, actions in planned:
         print_action_preview(skill_name, actions)
 
-    # Dry run stops after preview
     if args.dry_run:
         print("\nDry run complete. No changes were made.")
         sys.exit(0)
 
-    # Confirm
     print()
     if not confirm("Proceed with import?"):
         print("Import cancelled.")
         sys.exit(0)
 
-    # Execute
     print()
     for skill_name, _skill_dir, actions in planned:
         print(f"Importing {skill_name}...")
