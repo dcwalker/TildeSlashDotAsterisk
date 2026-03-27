@@ -86,6 +86,7 @@ class SonarQubeClient:
         self.project_key = project_key
         self.args = args
         self._auth_header = "Basic " + base64.b64encode(f"{token}:".encode()).decode()
+        self._http_auth_error = False
 
     def _request(self, path: str, params: Optional[dict] = None) -> Any:
         """Make authenticated GET request and return JSON."""
@@ -97,6 +98,8 @@ class SonarQubeClient:
             with urllib.request.urlopen(req) as resp:
                 return json.loads(resp.read().decode())
         except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                self._http_auth_error = True
             try:
                 body = e.read().decode()
                 return json.loads(body)
@@ -104,6 +107,10 @@ class SonarQubeClient:
                 return {}
         except urllib.error.URLError:
             return {}
+
+    def ping_authentication(self) -> None:
+        """GET api/authentication/validate — lightweight SonarQube credential check (since 3.3)."""
+        self._request("api/authentication/validate", None)
 
     def get_project_info(self) -> dict:
         """Fetch project/component info for project name."""
@@ -823,6 +830,19 @@ class OutputFormatter:
         return "\n".join(out) + "\n"
 
 
+def _exit_if_sonar_auth_rejected(client: SonarQubeClient) -> None:
+    """Stop with a clear message if any API call returned HTTP 401 or 403."""
+    if not client._http_auth_error:
+        return
+    print(
+        "Error: SonarQube API rejected credentials (HTTP 401 or 403). "
+        "Regenerate or fix SONAR_TOKEN (expired and wrong tokens often look like empty results). "
+        "Check SONAR_HOST_URL.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
 def run(
     client: SonarQubeClient,
     formatter: OutputFormatter,
@@ -832,7 +852,10 @@ def run(
     fetch_hotspots: bool,
 ) -> None:
     """Main run: fetch data and output sections."""
+    client.ping_authentication()
+    _exit_if_sonar_auth_rejected(client)
     project_info = client.get_project_info()
+    _exit_if_sonar_auth_rejected(client)
     project_name = project_info.get("name", "")
     coverage_measures = client.get_coverage_metrics()
     qg_status = client.get_quality_gate_status()
@@ -1019,7 +1042,7 @@ def main() -> None:
     args = parse_args()
 
     sonar_host = os.environ.get("SONAR_HOST_URL", "").rstrip("/") + "/"
-    sonar_token = os.environ.get("SONAR_TOKEN", "")
+    sonar_token = (os.environ.get("SONAR_TOKEN") or "").strip()
 
     if not sonar_host or sonar_host == "/":
         sys.exit("Error: SONAR_HOST_URL environment variable is not set")
