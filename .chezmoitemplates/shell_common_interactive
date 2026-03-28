@@ -1,0 +1,57 @@
+# ========================================
+# Environment
+# ========================================
+
+# Editor
+export EDITOR=vim
+
+# Make less more user-friendly
+export LESS="--status-column --long-prompt --no-init --quit-if-one-screen --quit-at-eof -R"
+
+# CDPATH - quickly cd into common directories (only add those that exist)
+CDPATH='.:~'
+[ -d "/Volumes" ] && CDPATH="$CDPATH:/Volumes"
+[ -d "/media" ] && CDPATH="$CDPATH:/media"
+export CDPATH
+
+# ========================================
+# Aliases
+# ========================================
+
+# Colorized grep
+alias grep='grep --color=auto'
+
+# dprint - code formatter for JSON, YAML, Markdown, and more
+# Uses global config at ~/.dprint.json so it works anywhere on the filesystem
+alias fmt='dprint fmt --config ~/.dprint.json'
+alias fmtcheck='dprint check --config ~/.dprint.json'
+
+# Prettier - JS/TS/CSS/HTML formatter (only when available)
+if command -v prettier &> /dev/null; then
+    alias prettierfix='prettier --write .'
+    alias prettiercheck='prettier --check .'
+fi
+
+# ESLint - JS/TS linter (only when available)
+if command -v eslint &> /dev/null; then
+    alias eslint-global='eslint --config ~/.config/eslint/eslint.config.mjs'
+fi
+
+# ========================================
+# NVM (Node Version Manager)
+# ========================================
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# ========================================
+# Startup
+# ========================================
+
+# Show loaded SSH keys at startup (reminder of expired keys)
+ssh-add -l 2>/dev/null || true
+
+{{ template "shell_update_checks" }}
+
+# Show update check results (cached, refreshed daily)
+_show_update_checks
