@@ -1,9 +1,9 @@
 ---
-name: interview
+name: conduct-interview
 description: Conduct a structured journalistic interview to produce a factual, authentic document. Use when the user wants help writing emails, journal entries, meeting notes, debriefs, planning docs, or any document that benefits from guided questioning.
 ---
 
-# Interview
+# Conduct Interview
 
 Conduct a structured, journalistic interview to gather information and produce a factual, authentic document. The interview process draws out the user's knowledge through careful questioning, clarification, and summarization rather than generating or inferring content.
 

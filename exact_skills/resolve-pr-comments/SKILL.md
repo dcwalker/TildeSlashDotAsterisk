@@ -1,9 +1,9 @@
 ---
-name: address-pr-comments
+name: resolve-pr-comments
 description: Review and address all unresolved GitHub PR comments for the current branch. Fixes issues, responds to comments, and resolves them appropriately. Use when the user wants to handle PR feedback or resolve PR comments.
 ---
 
-# Address PR Comments
+# Resolve PR Comments
 
 Review and systematically address all unresolved GitHub PR comments for the current branch's pull request. For each comment, either fix the issue, acknowledge it was already fixed, or explain why it's not valid.
 
@@ -33,7 +33,7 @@ Please start by reviewing the AGENTS.md and CONTRIBUTING.md files for project co
 This skill uses the `list-pr-comments.sh` script. It lives at:
 
 ```
-~/.cursor/skills/address-pr-comments/scripts/list-pr-comments.sh
+~/.cursor/skills/resolve-pr-comments/scripts/list-pr-comments.sh
 ```
 
 It is also available in your PATH as `list-pr-comments.sh`. Use the PATH form for all commands below.

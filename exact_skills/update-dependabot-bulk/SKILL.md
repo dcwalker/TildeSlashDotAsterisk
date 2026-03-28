@@ -1,9 +1,9 @@
 ---
-name: bulk-dependabot-update
+name: update-dependabot-bulk
 description: Process multiple open Dependabot PRs by creating a bulk update to package.json that supersedes individual PRs. Use when the user wants to batch update dependencies or handle multiple Dependabot PRs at once.
 ---
 
-# Bulk Dependabot Update
+# Update Dependabot Bulk
 
 Process multiple open Dependabot PRs by creating a bulk update to package.json that supersedes individual PRs, which is faster than approving and merging each PR individually.
 

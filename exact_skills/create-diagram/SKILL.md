@@ -1,9 +1,9 @@
 ---
-name: diagram
+name: create-diagram
 description: Create and update technical diagrams (Graphviz, Mermaid, or custom diagram code) with companion documentation. Covers when to use Graphviz vs Mermaid vs a custom script or library, inline vs embedded image delivery, and design rules (line styles, colors, line numbers, sources). Use when the user asks to create or update a diagram, document a data flow or architecture, or produce diagram plus narrative.
 ---
 
-# Diagram
+# Create Diagram
 
 Create and update diagrams (Graphviz, Mermaid, or custom diagram code) with companion markdown or prose. Follow the design rules below; the user may override any default.
 
