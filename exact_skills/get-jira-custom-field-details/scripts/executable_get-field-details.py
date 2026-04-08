@@ -4,7 +4,7 @@ Usage: get-field-details.py "Field Name" [--site SITE]
 Returns: custom field ID, field type, and (for option fields) list of options.
 
 Requires: ATLASSIAN_USER_EMAIL, ATLASSIAN_USER_API_KEY
-Site: Set ATLASSIAN_SITE (e.g. your-domain.atlassian.net) or pass --site
+Site: Set ATLASSIAN_SITE (host or https://your-domain.atlassian.net) or pass --site
 """
 
 import argparse
@@ -15,6 +15,7 @@ import sys
 import urllib.request
 from base64 import b64encode
 from typing import Callable, Optional, Tuple, Union
+from urllib.parse import urlparse
 
 
 def jira_get(path: str, base_url: str, headers: dict) -> Tuple[Union[dict, list], int]:
@@ -29,6 +30,20 @@ def jira_get(path: str, base_url: str, headers: dict) -> Tuple[Union[dict, list]
         except json.JSONDecodeError:
             data = {}
         return data, e.code
+
+
+def normalize_jira_site_to_api_base(site: str) -> str:
+    """Return Jira REST API v3 base URL. Accepts host or full URL (with optional path)."""
+    s = site.strip().rstrip("/")
+    if not s:
+        raise ValueError("site is empty")
+    if not s.startswith(("http://", "https://")):
+        s = "https://" + s
+    parsed = urlparse(s)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError(f"invalid site URL: {site!r}")
+    origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+    return f"{origin}/rest/api/3"
 
 
 def find_custom_field_by_name(fields: list, field_name: str) -> Optional[dict]:
@@ -118,7 +133,10 @@ def main() -> None:
     parser.add_argument(
         "--site",
         default=os.environ.get("ATLASSIAN_SITE"),
-        help="Atlassian site host (e.g. your-domain.atlassian.net). Default: ATLASSIAN_SITE env.",
+        help=(
+            "Atlassian site: host (e.g. your-domain.atlassian.net) or full base URL "
+            "(e.g. https://your-domain.atlassian.net). Default: ATLASSIAN_SITE env."
+        ),
     )
     args = parser.parse_args()
 
@@ -129,7 +147,8 @@ def main() -> None:
     site = (args.site or "").strip()
     if not site:
         print(
-            "Error: Site is required. Set ATLASSIAN_SITE or pass --site (e.g. your-domain.atlassian.net).",
+            "Error: Site is required. Set ATLASSIAN_SITE or pass --site "
+            "(e.g. your-domain.atlassian.net or https://your-domain.atlassian.net).",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -140,7 +159,11 @@ def main() -> None:
         print("Error: ATLASSIAN_USER_EMAIL and ATLASSIAN_USER_API_KEY must be set.", file=sys.stderr)
         sys.exit(1)
 
-    base_url = f"https://{site}/rest/api/3"
+    try:
+        base_url = normalize_jira_site_to_api_base(site)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
     credentials = b64encode(f"{email}:{api_key}".encode()).decode()
     headers = {"Accept": "application/json", "Authorization": f"Basic {credentials}"}
     get_fn = lambda path: jira_get(path, base_url, headers)

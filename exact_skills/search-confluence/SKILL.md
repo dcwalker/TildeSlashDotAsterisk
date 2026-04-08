@@ -1,171 +1,49 @@
 ---
 name: search-confluence
 description: Search Confluence pages, blog posts, and attachments using CQL (Confluence Query Language). Returns titles, URLs, spaces, and excerpts. Use when the user wants to find Confluence content, look up documentation, search a space, or locate pages by topic, label, author, or date.
+metadata:
+  status: trial
 ---
 
-# Search Confluence
+Search Confluence using `scripts/confluence-search.py` (Confluence Search API + CQL). For query patterns, examples, and CQL field docs, see [confluence-cql.md](../references/confluence-cql.md).
 
-Search Confluence content using the `confluence-search.py` script, which calls the Confluence Search API with a CQL query and returns formatted results.
+## Inputs
 
-## When to Use
+- Search intent (topic, space, author, date range, hierarchy).
+- Credentials: `ATLASSIAN_USER_EMAIL` and `ATLASSIAN_USER_API_KEY` as environment variables (required). `ATLASSIAN_BASE_URL` as env var or `--base-url` (if missing, ask for the site URL and pass `--base-url`).
 
-- User wants to find Confluence pages, blog posts, or attachments
-- User asks to search for documentation or look something up in Confluence
-- User provides a topic, keyword, or label to search for
-- User wants to see pages modified recently or created by a specific person
-- User wants to browse the contents of a space or a section of a page hierarchy
+## Required output structure
 
-## Prerequisites
+- Human-readable results: title, type, space, modified, URL, excerpt; or `--json` when the agent needs structured output.
+- If zero results: suggest broader CQL (see reference).
 
-Before running the script, check that the required credentials are available:
+## Workflow
 
-- `ATLASSIAN_USER_EMAIL` - the user's Atlassian account email
-- `ATLASSIAN_USER_API_KEY` - the user's Atlassian API token (https://id.atlassian.com/manage-profile/security/api-tokens)
-- `ATLASSIAN_BASE_URL` - the Confluence site URL, e.g. `https://mycompany.atlassian.net`
+### Phase 1: Discover
 
-`ATLASSIAN_USER_EMAIL` and `ATLASSIAN_USER_API_KEY` must be set as environment variables. If they are missing, tell the user which ones are unset and ask them to set them before proceeding.
+- Confirm env vars; if `ATLASSIAN_BASE_URL` is unset, obtain the Confluence site URL for `--base-url`.
+- Resolve script path: `skills/search-confluence/scripts/confluence-search.py` in this repo (or the absolute path for your skills install).
 
-`ATLASSIAN_BASE_URL` can be provided either as an environment variable or via the `--base-url` flag. If it is not set in the environment, ask the user for their Confluence site URL and pass it with `--base-url` instead of asking them to set the variable.
+### Phase 2: Design
 
-## Running the script
+- Build a CQL string. Start from the reference examples or Atlassian field docs linked in [confluence-cql.md](../references/confluence-cql.md).
 
-```bash
-confluence-search.py "<CQL query>" [--limit N] [--base-url URL] [--json]
-```
-
-Flags:
-- `--limit N` - max results to return (default 25)
-- `--base-url URL` - Confluence site URL (falls back to `ATLASSIAN_BASE_URL`)
-- `--json` - output as JSON (for further processing)
-
-## Building CQL queries
-
-CQL syntax: `field operator value`, combined with `AND`, `OR`, `NOT`, sorted with `ORDER BY`.
-All queries are case-insensitive.
-
-### Full-text search
-
-```
-text ~ "keyword"
-```
-
-`text` is a master field that searches across page title, body content, and labels.
-Use `~` (CONTAINS) for full-text; `=` is an exact match and rarely what you want for text.
-
-### Search by title
-
-```
-title ~ "runbook"
-title = "Exact Page Title"
-```
-
-### Filter by content type
-
-```
-type = page
-type = blogpost
-type = attachment
-type IN (page, blogpost)
-```
-
-Other types: `whiteboard`, `database`, `embed`, `folder`, `comment`.
-
-### Filter by space
-
-```
-space = ENG
-space IN (ENG, OPS, PLAT)
-```
-
-Use space keys (short codes), not display names.
-
-### Filter by label
-
-```
-label = "on-call"
-label NOT IN (draft, archived)
-```
-
-### Filter by date
-
-```
-lastmodified >= now("-2w")          modified in the last 2 weeks
-lastmodified >= now("-30d")         modified in the last 30 days
-created > "2025-01-01"              created after a date
-lastmodified >= startOfMonth()      modified since start of this month
-```
-
-Date math functions: `now()`, `startOfDay()`, `startOfWeek()`, `startOfMonth()`, `startOfYear()` and their `end*` counterparts.
-
-### Filter by author
-
-```
-creator = "accountId"
-contributor = "accountId"
-```
-
-### Filter by page hierarchy
-
-```
-ancestor = 12345      all descendants of a page (recursive)
-parent = 12345        direct children of a page only
-```
-
-### Sort results
-
-```
-ORDER BY lastmodified DESC
-ORDER BY created DESC
-ORDER BY title ASC
-```
-
-### Combining clauses
-
-```
-text ~ "incident" AND space = OPS AND type = page
-label = "runbook" AND lastmodified >= now("-6m") ORDER BY lastmodified DESC
-type = page AND space IN (ENG, PLAT) AND title ~ "architecture"
-ancestor = 98765 AND lastmodified >= now("-1w")
-```
-
-## Example invocations
+### Phase 3: Implement
 
 ```bash
-# Find pages containing "deployment pipeline" in the ENG space
-confluence-search.py 'text ~ "deployment pipeline" AND space = ENG'
-
-# Find runbooks modified in the last 6 months
-confluence-search.py 'label = "runbook" AND lastmodified >= now("-6m")' --limit 10
-
-# Find recently updated pages across two spaces
-confluence-search.py 'type = page AND space IN (ENG, OPS) AND lastmodified >= now("-2w")' --limit 20
-
-# Find all descendants of a section by ancestor page ID
-confluence-search.py 'ancestor = 12345678 AND type = page'
-
-# Exact title search
-confluence-search.py 'title = "On-Call Runbook"'
-
-# Get JSON output for further processing
-confluence-search.py 'text ~ "API gateway" AND space = ARCH' --json
+python3 scripts/confluence-search.py "<CQL query>" [--limit N] [--base-url URL] [--json]
 ```
 
-## Interpreting results
+Flags: `--limit N` (default 25), `--base-url URL`, `--json`.
 
-The script outputs one result per entry with:
-- Title and content type
-- Space name and key
-- Last modified date and author
-- Direct URL to the page
-- A short excerpt with the matching context
+Run from the `search-confluence/` directory next to `SKILL.md`, or pass the script’s absolute path.
 
-If no results are found, try broadening the query (e.g. remove space filter, use `text ~` instead of `title ~`, shorten the search phrase).
+### Phase 4: Verify
 
-To load full page content after you have a URL or page id, use the [read-confluence-page](../read-confluence-page/SKILL.md) skill.
+- If the user needs full page text, follow [download-confluence-page](../download-confluence-page/SKILL.md) with a result URL or ID.
 
-## CQL reference
+## References
 
-- Fields: https://developer.atlassian.com/cloud/confluence/cql-fields/
-- Operators: https://developer.atlassian.com/cloud/confluence/cql-operators/
-- Functions: https://developer.atlassian.com/cloud/confluence/cql-functions/
-- Full guide: https://developer.atlassian.com/cloud/confluence/advanced-searching-using-cql/
+- [confluence-cql.md](../references/confluence-cql.md) — CQL clauses, examples, Atlassian CQL links.
+- [download-confluence-page](../download-confluence-page/SKILL.md) — full page content after search.
+- [skill-authoring.md](../references/skill-authoring.md), [technical-definition-of-done.md](../references/technical-definition-of-done.md).

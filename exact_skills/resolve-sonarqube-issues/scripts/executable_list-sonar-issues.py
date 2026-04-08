@@ -96,21 +96,33 @@ class SonarQubeClient:
         req = urllib.request.Request(url, headers={"Authorization": self._auth_header})
         try:
             with urllib.request.urlopen(req) as resp:
-                return json.loads(resp.read().decode())
+                body = resp.read().decode()
+                try:
+                    return json.loads(body)
+                except ValueError as json_error:
+                    raise RuntimeError(f"SonarQube returned invalid JSON for {url}") from json_error
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
                 self._http_auth_error = True
+            body = e.read().decode()
             try:
-                body = e.read().decode()
                 return json.loads(body)
-            except ValueError:
-                return {}
-        except urllib.error.URLError:
-            return {}
+            except ValueError as json_error:
+                raise RuntimeError(
+                    f"SonarQube request failed with HTTP {e.code} for {url}: {body}"
+                ) from json_error
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Failed to reach SonarQube at {url}: {e.reason}") from e
 
     def ping_authentication(self) -> None:
-        """GET api/authentication/validate — lightweight SonarQube credential check (since 3.3)."""
-        self._request("api/authentication/validate", None)
+        """GET api/authentication/validate — lightweight SonarQube credential check (since 3.3).
+
+        This endpoint returns HTTP 200 with {"valid": false} for invalid tokens rather than
+        401/403, so we must inspect the response body to detect auth failures.
+        """
+        data = self._request("api/authentication/validate", None)
+        if not data.get("valid", True):
+            self._http_auth_error = True
 
     def get_project_info(self) -> dict:
         """Fetch project/component info for project name."""
@@ -123,9 +135,10 @@ class SonarQubeClient:
         params = {"componentKeys": self.project_key}
         if self.args.issue_key:
             params["ps"] = 500
-        if self.args.status and self.args.status in ("OPEN", "CONFIRMED", "REOPENED", "RESOLVED", "CLOSED"):
+        issue_statuses = ("OPEN", "CONFIRMED", "REOPENED", "RESOLVED", "CLOSED")
+        if self.args.status in issue_statuses:
             params["statuses"] = self.args.status
-        elif not self.args.status and not self.args.issue_key:
+        elif not self.args.issue_key:
             params["resolved"] = "false"
         if self.args.pull_request:
             params["pullRequest"] = self.args.pull_request
@@ -163,6 +176,11 @@ class SonarQubeClient:
         data = self._request("api/issues/search", params)
         if not data:
             return {"total": 0, "issues": []}
+        errs = data.get("errors", [])
+        if errs:
+            if not self.args.json and not self.args.summary:
+                print(f"Warning: Issues API returned error: {errs[0].get('msg', '')}", file=sys.stderr)
+            return {"total": 0, "issues": []}
 
         issues = data.get("issues", [])
         if self.args.issue_key:
@@ -181,8 +199,8 @@ class SonarQubeClient:
             comp_match = self.args.component
             full_key = self.project_key + ":" + comp_match
             hotspots = [h for h in hotspots if h.get("component") in (comp_match, full_key)]
-        if self.args.status and self.args.status not in ("TO_REVIEW", "REVIEWED", "FIXED", "SAFE"):
-            hotspots = [h for h in hotspots if h.get("status") == "TO_REVIEW"]
+        if self.args.status and self.args.status in ("TO_REVIEW", "REVIEWED", "FIXED", "SAFE"):
+            hotspots = [h for h in hotspots if h.get("status") == self.args.status]
         return hotspots
 
     def get_hotspots(self) -> dict:
@@ -477,14 +495,15 @@ class OutputFormatter:
         )
         if vuln:
             out.extend(["", "Vulnerability Description:", "", self.wrap_with_pipe(strip_html(vuln))])
-        remediation = rule_obj.get("remediation") or {}
+        raw_remediation = rule_obj.get("remediation")
+        remediation = raw_remediation if isinstance(raw_remediation, dict) else {}
         fix = (
             item.get("fixRecommendations")
             or rule_obj.get("fixRecommendations")
             or rule_obj.get("fix_recommendations")
             or remediation.get("func")
             or remediation.get("desc")
-            or rule_obj.get("remediation")
+            or (raw_remediation if isinstance(raw_remediation, str) else None)
         )
         if isinstance(fix, dict):
             fix = fix.get("func") or fix.get("desc") or ""
@@ -952,7 +971,7 @@ Examples:
     parser.add_argument(
         "--status",
         metavar="status",
-        help="Filter by status (Issues: OPEN, CONFIRMED, REOPENED, RESOLVED, CLOSED; Hotspots: TO_REVIEW, REVIEWED)",
+        help="Filter by status (Issues: OPEN, CONFIRMED, REOPENED, RESOLVED, CLOSED; Hotspots: TO_REVIEW, REVIEWED, FIXED, SAFE)",
     )
     parser.add_argument(
         "-r", "--rule",
@@ -1047,7 +1066,10 @@ def main() -> None:
     if not sonar_host or sonar_host == "/":
         sys.exit("Error: SONAR_HOST_URL environment variable is not set")
     if not sonar_token:
-        sys.exit("Error: SONAR_TOKEN environment variable is not set")
+        sys.exit(
+            "Error: SONAR_TOKEN environment variable is not set. "
+            "Generate a token at: https://docs.sonarsource.com/sonarqube-server/latest/user-guide/managing-tokens"
+        )
 
     project_key = get_project_key()
     fetch_issues, fetch_hotspots = _resolve_fetch_mode(args)

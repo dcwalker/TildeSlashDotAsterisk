@@ -34,6 +34,9 @@ except ImportError:
     print("Error: 'requests' is not installed. Run: pip3 install --user requests", file=sys.stderr)
     sys.exit(1)
 
+# Seconds; avoids hanging agents on stalled Confluence connections.
+REQUEST_TIMEOUT = 60.0
+
 
 def get_auth() -> tuple:
     """Return (email, api_key) from environment, or exit with an error."""
@@ -61,7 +64,8 @@ def get_auth() -> tuple:
 
 def get_base_url(override: Optional[str]) -> str:
     """Return Confluence base URL from argument or environment, or exit."""
-    url = override or os.environ.get("ATLASSIAN_BASE_URL", "").rstrip("/")
+    raw_url = override if override is not None else os.environ.get("ATLASSIAN_BASE_URL", "")
+    url = raw_url.strip().rstrip("/")
     if not url:
         print(
             "Error: required environment variable not set: ATLASSIAN_BASE_URL\n"
@@ -114,6 +118,7 @@ def search(base_url: str, cql: str, limit: int, auth: tuple) -> list:
             f"{base_url}/wiki/rest/api/search",
             params=params,
             auth=auth,
+            timeout=REQUEST_TIMEOUT,
         )
 
         if resp.status_code == 400:

@@ -155,8 +155,11 @@ def search_page_by_title(
     return results[0]["id"]
 
 
-def parse_confluence_url(url: str) -> tuple:
+def parse_confluence_url(url: str, auth: tuple) -> tuple:
     """Return (base_url, page_id) from a Confluence page URL.
+
+    ``auth`` is (email, api_key) for API calls needed to resolve display URLs,
+    space overviews, and tiny links. Call ``get_auth()`` once in ``main()`` and pass it here.
 
     Documented Confluence URL formats:
     https://confluence.atlassian.com/confkb/the-differences-between-various-url-formats-for-a-confluence-page-278692715.html
@@ -179,9 +182,19 @@ def parse_confluence_url(url: str) -> tuple:
     share the modern Cloud URL structure are handled by the same regex.
     Non-page types may fail v1 content fetch; use stubs or fix the URL.
     """
+    url = url.strip()
+    if "://" not in url and not url.startswith("/"):
+        url = f"https://{url}"
+
     parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        print(
+            f"Error: Invalid Confluence URL {url!r}: expected a full URL including scheme and host",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     base_url = f"{parsed.scheme}://{parsed.netloc}"
-    auth = get_auth()
 
     # Modern Cloud pages and blog posts:
     #   /wiki/spaces/{spaceKey}/pages/{pageId}[/Title]
@@ -216,8 +229,14 @@ def parse_confluence_url(url: str) -> tuple:
     # Encoding spec: https://confluence.atlassian.com/confkb/how-to-programmatically-generate-the-tiny-link-of-a-confluence-page-956713432.html
     match = re.search(r"/wiki/x/([A-Za-z0-9+/=_-]+)$", parsed.path)
     if match:
+        token = match.group(1)
+        pad_len = (-len(token)) % 4
+        padded = token + ("=" * pad_len)
         try:
-            raw = base64.b64decode(match.group(1) + "==")  # padding tolerance
+            try:
+                raw = base64.urlsafe_b64decode(padded)
+            except Exception:
+                raw = base64.b64decode(padded)
             page_id = str(int.from_bytes(raw, byteorder="big"))
             return base_url, page_id
         except Exception:
@@ -1892,7 +1911,7 @@ Recursion (default):
     args = parser.parse_args()
 
     auth = get_auth()
-    base_url, page_id = parse_confluence_url(args.url)
+    base_url, page_id = parse_confluence_url(args.url, auth)
 
     output_dir = Path(args.output_dir if args.output_dir else dir_from_url(args.url))
     path_stack: list[str] = []
