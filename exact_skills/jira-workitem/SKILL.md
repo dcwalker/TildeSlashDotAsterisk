@@ -9,7 +9,7 @@ Create or edit Jira work items with acli. Parent, standard/custom components, re
 
 ## Inputs
 
-- **Create:** project key, issue type, summary; optional description (ADF), assignee, labels, parent, required custom fields.
+- **Create:** project key, issue type, summary; optional description (ADF), assignee, labels, parent, issue links, required custom fields.
 - **Edit:** issue key(s), JQL, or filter; field changes or transitions; for comments, exact draft text and explicit approval before posting.
 - acli authenticated: `acli jira auth status`. Use `--fields '*all'` (quoted) when inspecting custom fields.
 
@@ -24,7 +24,7 @@ Create or edit Jira work items with acli. Parent, standard/custom components, re
 
 - Read project conventions (AGENTS.md, CONTRIBUTING.md, issue guidelines) when working in a repo.
 - If not authenticated: `acli jira auth login --site "..." --email "..." --token` or `--web`.
-- For parent, components, required selects, or bulk operations, open [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md).
+- For parent, issue links, components, required selects, or bulk operations, open [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md).
 
 ### Phase 2: Design
 
@@ -73,6 +73,7 @@ Then `PUT /rest/api/3/issue/{key}` with `components` if needed (reference).
 - Transition: `acli jira workitem transition --key "..." --status "Done"` (exact status name).
 - Comment: show draft → explicit approval → `acli jira workitem comment create --key "..." --body "..."` or `--body-file` / `--editor` for ADF.
 - Fields: `acli jira workitem edit --key "..." --summary "..." --description-file ...` or `--from-json` with `"issues": [...]` (no `--key` with `--from-json`). Custom fields, parent: JSON per reference. Components: REST PUT, not acli edit JSON.
+- Links: `acli jira workitem link create --out BLOCKED --in BLOCKER --type "Blocks" --yes` (note: `--in` is the blocker, `--out` is the blocked issue; always verify direction via JSON after creating). See [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md) for direction, link types, and when to use links vs the parent field.
 
 **Issue type / workflow:** If simple edit fails, use bulk move REST (reference).
 

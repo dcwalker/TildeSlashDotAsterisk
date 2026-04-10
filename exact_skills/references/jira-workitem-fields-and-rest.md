@@ -41,6 +41,72 @@ For **required** or **custom** select/dropdown fields (e.g. Environment, Severit
 
 If the schema or value shape is unclear, prompt the user for the correct value.
 
+## Issue links vs the parent field
+
+These are two distinct Jira concepts. Use the right one for the relationship you want to express.
+
+### When to use each
+
+| Situation | Use |
+|---|---|
+| Grouping work under an Epic, Story, or parent Task (work breakdown) | Parent field |
+| Expressing a dependency, blocker, duplicate, or any cross-issue relationship | Issue link |
+| A sub-task belongs inside a parent issue | Parent field |
+| One issue cannot proceed until another is resolved | Issue link (Blocks) |
+| Two issues track the same problem | Issue link (Duplicate) |
+| Relating issues across different projects or epics | Issue link |
+
+The parent field is structural: it places an issue inside a hierarchy in the backlog. Only one parent is allowed. Issue links are relational: they describe relationships between issues without affecting hierarchy. Multiple links of different types can exist on one issue.
+
+### Creating links with acli
+
+```bash
+# List available link types (shows outward descriptions)
+acli jira workitem link type
+
+# Create a link
+acli jira workitem link create --out KEY-A --in KEY-B --type "Blocks" --yes
+
+# List links on an issue
+acli jira workitem link list --key KEY-123
+```
+
+### Inward vs outward direction
+
+**Always confirm direction after creating a link** by running `acli jira workitem view KEY --json --fields issuelinks` and checking the JSON. The direction is correct when the issue that should be the blocker has `outwardIssue` pointing to the blocked issue.
+
+How to read the JSON result:
+
+- `outwardIssue: Y` on issue X → X "blocks" Y (X is the blocker, Y is blocked)
+- `inwardIssue: Y` on issue X → X "is blocked by" Y (Y is the blocker, X is blocked)
+
+**acli flag behavior (counterintuitive):** The `--out` and `--in` flags do NOT match outward/inward semantics. Empirically, `--out` is the BLOCKED issue and `--in` is the BLOCKER. To make A block B:
+
+```bash
+# A blocks B: use --out B --in A (reversed from what the flag names suggest)
+acli jira workitem link create --out B --in A --type "Blocks" --yes
+```
+
+Always verify the JSON after creating to confirm the direction before moving on. If it is reversed, delete the link and recreate with the flags swapped.
+
+Examples using the types available in this workspace:
+
+| Goal | --in (the blocker) | --out (the blocked) |
+|---|---|---|
+| A blocks B | A | B |
+| A depends on B | B | A |
+| A duplicates B | B | A |
+
+When in doubt, ask the user to confirm which issue should be the blocker before creating the link.
+
+### Deleting links
+
+```bash
+acli jira workitem link delete --help
+```
+
+Find the link ID first with `acli jira workitem link list --key KEY-123`, then delete by ID.
+
 ## Changing issue type when workflows differ (status mapping)
 
 If the target issue type uses a different workflow (e.g. Task "To Do" vs Bug "Backlog"), simple edit fails with "The issue type selected is invalid". Use the **Bulk move** API instead.
