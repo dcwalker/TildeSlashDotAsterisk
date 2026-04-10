@@ -8,7 +8,7 @@ metadata:
   status: trial
 ---
 
-Create or update Confluence Cloud pages via the Confluence REST API v2. `acli confluence page` only supports reading; all writes use REST directly. For ADF details, errors, and mentions, see [confluence-rest-page-write.md](../references/confluence-rest-page-write.md).
+Create or update Confluence Cloud pages via the Confluence REST API v2. `acli confluence page` only supports reading; all writes use REST directly. For ADF details, errors, and mentions, see [confluence-rest-page-write.md](../../references/confluence-rest-page-write.md).
 
 ## Inputs
 
@@ -90,7 +90,35 @@ curl -s \
 
 - Confirm HTTP success; share the page URL.
 - On **409**, re-fetch version and retry (see reference error table).
-- For work tied to repo deliverables, apply [technical-definition-of-done.md](../references/technical-definition-of-done.md) where relevant.
+- For work tied to repo deliverables, apply [technical-definition-of-done.md](../../references/technical-definition-of-done.md) where relevant.
+
+## Archiving pages
+
+`acli confluence page` has no archive command. Use the v1 REST API (experimental):
+
+```bash
+curl -s -X POST \
+  "$ATLASSIAN_BASE_URL/wiki/rest/api/content/archive" \
+  -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"pages": [{"id": "PAGE_ID_1"}, {"id": "PAGE_ID_2"}]}'
+```
+
+Returns `202 Accepted` with a task ID. Poll for completion:
+
+```bash
+curl -s \
+  "$ATLASSIAN_BASE_URL/wiki/rest/api/longtask/TASK_ID" \
+  -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  -H "Accept: application/json"
+```
+
+Check `finished: true` and `status: "FINISH_SUCCESS"` in the response. Multiple page IDs can be submitted in a single request; they need not belong to the same space.
+
+Pitfalls:
+- `PUT /wiki/rest/api/content/{id}` with `"status": "archived"` silently returns "current" without archiving.
+- `POST /wiki/api/v2/pages/{id}/archive` returns 404; this endpoint does not exist.
 
 ## References
 
