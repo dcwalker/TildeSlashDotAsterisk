@@ -37,6 +37,33 @@ acli jira workitem create --generate-json --fields '*all' > /tmp/workitem-templa
 ```
 
 - Fill JSON. Required custom fields go in **additionalAttributes** (see reference). Do **not** put `components` in create JSON (acli rejects it); set component after create via REST (reference).
+
+#### Discover required fields and valid options before drafting
+
+Do not wait for a failed create to discover required fields. Run createmeta first:
+
+```bash
+curl -s -u "${ATLASSIAN_USER_EMAIL}:${ATLASSIAN_USER_API_KEY}" \
+  "https://YOUR-SITE.atlassian.net/rest/api/3/issue/createmeta?projectKeys=PROJ&issuetypeNames=IssueType&expand=projects.issuetypes.fields" \
+  | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for proj in data['projects']:
+    for it in proj['issuetypes']:
+        for fname, f in it['fields'].items():
+            print(fname, '|', f['name'], '| required:', f.get('required'))
+            for av in f.get('allowedValues', []):
+                print('  id:', av.get('id'), '| value:', av.get('value', av.get('name','')))
+"
+```
+
+Use this output to:
+
+1. Identify every required field (`required: True`) and its valid option IDs before writing the JSON.
+2. Aim to fill in all relevant optional fields too, not just the minimum. A more complete ticket is more useful.
+3. For subjective fields like Severity, Priority, and Environment: look at similar existing issues in the same project to find the values most commonly used for comparable work. Use `acli jira workitem search --jql "project = PROJ AND issuetype = IssueType ORDER BY created DESC" --limit 5` to find reference issues, then inspect them for field values.
+4. Always confirm Severity, Priority, Environment, and any other field you are not confident about with the user before creating. Present your proposed values explicitly and ask for a yes or correction.
+
 - Minimal ADF `description` shape:
 
 ```json
