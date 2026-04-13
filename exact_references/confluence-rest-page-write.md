@@ -1,6 +1,6 @@
 # Confluence REST: page body, errors, and edge cases
 
-Supporting detail for [confluence-page](../confluence-page/SKILL.md). Keep the skill file procedural; use this for ADF shape, errors, and personal spaces.
+Supporting detail for [confluence-page](../skills/confluence-page/SKILL.md). Keep the skill file procedural; use this for ADF shape, errors, and personal spaces.
 
 ## Body format: ADF
 
@@ -103,7 +103,7 @@ curl -s \
   "$ATLASSIAN_BASE_URL/wiki/rest/api/user/search?query=SEARCH_TERM"
 ```
 
-The response is an array of user objects; extract `accountId` from the matching result. Alternatively, the `atlassian_user_search.py` script in [jira-workitem](../jira-workitem/scripts/atlassian_user_search.py) uses `/rest/api/3/user/search`, which resolves the same `accountId` values and can be reused.
+The response is an array of user objects; extract `accountId` from the matching result. Alternatively, the `atlassian_user_search.py` script in [jira-workitem](../skills/jira-workitem/scripts/atlassian_user_search.py) uses `/rest/api/3/user/search`, which resolves the same `accountId` values and can be reused.
 
 Plain text `@Display Name` in the page body does not create a real mention or trigger a notification. Always use the ADF `mention` node with the correct `accountId` when a mention must notify the user.
 
@@ -144,5 +144,5 @@ The response includes the numeric `id` needed for `spaceId` in create/update req
 
 ## Related skills
 
-- [download-confluence-page](../download-confluence-page/SKILL.md): read page content and metadata before updating.
-- [search-confluence](../search-confluence/SKILL.md): find page IDs by keyword or CQL.
+- [download-confluence-page](../skills/download-confluence-page/SKILL.md): read page content and metadata before updating.
+- [search-confluence](../skills/search-confluence/SKILL.md): find page IDs by keyword or CQL.

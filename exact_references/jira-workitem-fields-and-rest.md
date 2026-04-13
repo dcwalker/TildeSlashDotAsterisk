@@ -1,6 +1,6 @@
 # Jira work items: fields, bulk operations, and ADF notes
 
-Supporting detail for [jira-workitem](../jira-workitem/SKILL.md). Use this for parent, component, custom fields, bulk move, and ADF reminders; keep the skill file focused on the ordered workflow.
+Supporting detail for [jira-workitem](../skills/jira-workitem/SKILL.md). Use this for parent, component, custom fields, bulk move, and ADF reminders; keep the skill file focused on the ordered workflow.
 
 ## Field reference (create and edit)
 
@@ -26,7 +26,7 @@ On many Jira Cloud sites the repo's Compass component is linked via the standard
 
 If the project uses a **custom** component field (e.g. "Domain Component" or similar):
 
-- **Discover field ID:** Use [get-jira-custom-field-details](../get-jira-custom-field-details/SKILL.md) or run `get-field-details.py` with the field name. The ID is like `customfield_10000`. Or use create metadata: `GET /rest/api/3/issue/createmeta?projectKeys=PROJECT_KEY&issuetypeIds=ISSUE_TYPE_ID&expand=projects.issuetypes.fields` and find the field by name.
+- **Discover field ID:** Use [get-jira-custom-field-details](../skills/get-jira-custom-field-details/SKILL.md) or run `get-field-details.py` with the field name. The ID is like `customfield_10000`. Or use create metadata: `GET /rest/api/3/issue/createmeta?projectKeys=PROJECT_KEY&issuetypeIds=ISSUE_TYPE_ID&expand=projects.issuetypes.fields` and find the field by name.
 - **Discover value:** Use get-compass-component-by-repo skill or `get-component-by-repo.py` with the repo name. Use the component name or ID in the format the field expects.
 - **Format:** Typically `"customfield_XXXXX": { "value": "Component Name" }` or `{ "id": "OPTION_ID" }` depending on field type. View an issue that has the field set (`--fields '*all'`) to see the shape.
 - **Create:** Include in the create JSON. **Edit:** Include in the edit JSON and apply with `--from-json`.

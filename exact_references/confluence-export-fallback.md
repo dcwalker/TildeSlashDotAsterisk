@@ -1,6 +1,6 @@
 # Confluence Markdown export script (fallback path)
 
-Supporting detail for [download-confluence-page](../download-confluence-page/SKILL.md). Use when the primary `acli` path is not enough (attachments, very long bodies, or Markdown on disk).
+Supporting detail for [download-confluence-page](../skills/download-confluence-page/SKILL.md). Use when the primary `acli` path is not enough (attachments, very long bodies, or Markdown on disk).
 
 ## Script location
 

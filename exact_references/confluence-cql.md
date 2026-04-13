@@ -1,6 +1,6 @@
 # Confluence CQL (search)
 
-Supporting detail for [search-confluence](../search-confluence/SKILL.md).
+Supporting detail for [search-confluence](../skills/search-confluence/SKILL.md).
 
 ## Building CQL queries
 
@@ -126,7 +126,7 @@ The script outputs one result per entry with:
 
 If no results are found, try broadening the query (e.g. remove space filter, use `text ~` instead of `title ~`, shorten the search phrase).
 
-To load full page content after you have a URL or page id, use the [download-confluence-page](../download-confluence-page/SKILL.md) skill.
+To load full page content after you have a URL or page id, use the [download-confluence-page](../skills/download-confluence-page/SKILL.md) skill.
 
 ## CQL reference (Atlassian)
 

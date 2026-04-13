@@ -5,7 +5,7 @@ metadata:
   status: trial
 ---
 
-Create or edit Jira work items with acli. Parent, standard/custom components, required fields, bulk move, bulk component edit, and ADF details live in [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md). [get-jira-custom-field-details](../get-jira-custom-field-details/SKILL.md) helps resolve `customfield_*` IDs.
+Create or edit Jira work items with acli. Parent, standard/custom components, required fields, bulk move, bulk component edit, and ADF details live in [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md). [get-jira-custom-field-details](../get-jira-custom-field-details/SKILL.md) helps resolve `customfield_*` IDs.
 
 ## Inputs
 
@@ -24,7 +24,7 @@ Create or edit Jira work items with acli. Parent, standard/custom components, re
 
 - Read project conventions (AGENTS.md, CONTRIBUTING.md, issue guidelines) when working in a repo.
 - If not authenticated: `acli jira auth login --site "..." --email "..." --token` or `--web`.
-- For parent, issue links, components, required selects, or bulk operations, open [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md).
+- For parent, issue links, components, required selects, or bulk operations, open [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md).
 
 ### Phase 2: Design
 
@@ -73,7 +73,7 @@ Then `PUT /rest/api/3/issue/{key}` with `components` if needed (reference).
 - Transition: `acli jira workitem transition --key "..." --status "Done"` (exact status name).
 - Comment: show draft → explicit approval → `acli jira workitem comment create --key "..." --body "..."` or `--body-file` / `--editor` for ADF.
 - Fields: `acli jira workitem edit --key "..." --summary "..." --description-file ...` or `--from-json` with `"issues": [...]` (no `--key` with `--from-json`). Custom fields, parent: JSON per reference. Components: REST PUT, not acli edit JSON.
-- Links: `acli jira workitem link create --out BLOCKED --in BLOCKER --type "Blocks" --yes` (note: `--in` is the blocker, `--out` is the blocked issue; always verify direction via JSON after creating). See [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md) for direction, link types, and when to use links vs the parent field.
+- Links: `acli jira workitem link create --out BLOCKED --in BLOCKER --type "Blocks" --yes` (note: `--in` is the blocker, `--out` is the blocked issue; always verify direction via JSON after creating). See [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md) for direction, link types, and when to use links vs the parent field.
 
 **Issue type / workflow:** If simple edit fails, use bulk move REST (reference).
 
@@ -81,10 +81,9 @@ Then `PUT /rest/api/3/issue/{key}` with `components` if needed (reference).
 
 - Re-fetch affected fields after ADF edits if needed.
 - On create failure (required fields, invalid ADF): use createmeta / [get-jira-custom-field-details](../get-jira-custom-field-details/SKILL.md); retry after fixing JSON.
-- For repo-deliverable work, use [technical-definition-of-done.md](../references/technical-definition-of-done.md) where applicable.
+
 
 ## References
 
-- [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md) — field reference, components, bulk move, bulk component, ADF reminders, acli links.
+- [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md) — field reference, components, bulk move, bulk component, ADF reminders, acli links.
 - [get-jira-custom-field-details](../get-jira-custom-field-details/SKILL.md)
-- [skill-authoring.md](../references/skill-authoring.md), [technical-definition-of-done.md](../references/technical-definition-of-done.md)

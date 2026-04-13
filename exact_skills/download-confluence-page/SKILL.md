@@ -11,7 +11,7 @@ metadata:
   status: trial
 ---
 
-Load full Confluence page or blog post content. Prefer `acli` first; use the Markdown export script when attachments, length, or on-disk files matter. Pair with [search-confluence](../search-confluence/SKILL.md) to resolve IDs or URLs. Script behavior, output layout, and limits: [confluence-export-fallback.md](../references/confluence-export-fallback.md).
+Load full Confluence page or blog post content. Prefer `acli` first; use the Markdown export script when attachments, length, or on-disk files matter. Pair with [search-confluence](../search-confluence/SKILL.md) to resolve IDs or URLs. Script behavior, output layout, and limits: [confluence-export-fallback.md](../../references/confluence-export-fallback.md).
 
 ## Inputs
 
@@ -32,7 +32,7 @@ Load full Confluence page or blog post content. Prefer `acli` first; use the Mar
 
 ### Phase 2: Design
 
-- Choose primary (`acli` only) vs fallback (script) using the criteria in [confluence-export-fallback.md](../references/confluence-export-fallback.md).
+- Choose primary (`acli` only) vs fallback (script) using the criteria in [confluence-export-fallback.md](../../references/confluence-export-fallback.md).
 
 ### Phase 3: Implement
 
@@ -65,7 +65,6 @@ Resolve the skill directory for your environment; do not assume a single global 
 
 ## References
 
-- [confluence-export-fallback.md](../references/confluence-export-fallback.md) — script recursion, YAML front matter, stubs, limitations.
+- [confluence-export-fallback.md](../../references/confluence-export-fallback.md) — script recursion, YAML front matter, stubs, limitations.
 - [search-confluence](../search-confluence/SKILL.md).
 - Content body (REST): https://developer.atlassian.com/cloud/confluence/rest/v1/api-group-content-body/
-- [skill-authoring.md](../references/skill-authoring.md), [technical-definition-of-done.md](../references/technical-definition-of-done.md).

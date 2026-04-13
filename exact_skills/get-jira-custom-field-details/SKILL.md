@@ -40,7 +40,7 @@ Run from the `get-jira-custom-field-details/` directory next to `SKILL.md`, or p
 
 ### Phase 4: Verify
 
-- Map output into [jira-workitem](../jira-workitem/SKILL.md) or REST payloads (`additionalAttributes`, `customfield_*` shapes). For complex fields, cross-check [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md).
+- Map output into [jira-workitem](../jira-workitem/SKILL.md) or REST payloads (`additionalAttributes`, `customfield_*` shapes). For complex fields, cross-check [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md).
 
 ## Without the script
 
@@ -51,5 +51,4 @@ Run from the `get-jira-custom-field-details/` directory next to `SKILL.md`, or p
 
 - [Jira REST API v3 – Get fields](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-fields/#api-rest-api-3-field-get)
 - [Get custom field options (context)](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-custom-field-options/#api-rest-api-3-field-fieldid-context-contextid-option-get)
-- [jira-workitem](../jira-workitem/SKILL.md), [jira-workitem-fields-and-rest.md](../references/jira-workitem-fields-and-rest.md)
-- [skill-authoring.md](../references/skill-authoring.md), [technical-definition-of-done.md](../references/technical-definition-of-done.md)
+- [jira-workitem](../jira-workitem/SKILL.md), [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md)

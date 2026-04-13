@@ -1,12 +1,10 @@
 # Resolve SonarQube: detailed workflow
 
-Supporting detail for [resolve-sonarqube-issues](../resolve-sonarqube-issues/SKILL.md). Use this for script usage, grouping rules, fix batches, commit/comment conventions, and the final report shape.
+Supporting detail for [resolve-sonarqube-issues](../skills/resolve-sonarqube-issues/SKILL.md). Use this for script usage, grouping rules, fix batches, commit/comment conventions, and the final report shape.
 
 ## Script: `list-sonar-issues.py`
 
-- **Personal skills tree:** `scripts/list-sonar-issues.py` next to `SKILL.md` under `resolve-sonarqube-issues/`.
-- **cpe-imre repo:** `skills/resolve-sonarqube-issues/scripts/list-sonar-issues.py` from the repository root.
-- Or on `PATH` if installed elsewhere (e.g. `~/scripts`).
+- Path (repo): `skills/resolve-sonarqube-issues/scripts/list-sonar-issues.py` from the repository root; or on `PATH` if installed elsewhere (e.g. `~/scripts`).
 - Run with `--help` first to learn flags and output shape.
 - Run with **no flags** to list Issues, Security Hotspots, Test Coverage, and Code Duplication for the current PR (or context the script resolves).
 - **Cache** the output; a run can take a minute or more.

@@ -5,7 +5,7 @@ metadata:
   status: trial
 ---
 
-Search Confluence using `scripts/confluence-search.py` (Confluence Search API + CQL). For query patterns, examples, and CQL field docs, see [confluence-cql.md](../references/confluence-cql.md).
+Search Confluence using `scripts/confluence-search.py` (Confluence Search API + CQL). For query patterns, examples, and CQL field docs, see [confluence-cql.md](../../references/confluence-cql.md).
 
 ## Inputs
 
@@ -26,7 +26,7 @@ Search Confluence using `scripts/confluence-search.py` (Confluence Search API + 
 
 ### Phase 2: Design
 
-- Build a CQL string. Start from the reference examples or Atlassian field docs linked in [confluence-cql.md](../references/confluence-cql.md).
+- Build a CQL string. Start from the reference examples or Atlassian field docs linked in [confluence-cql.md](../../references/confluence-cql.md).
 
 ### Phase 3: Implement
 
@@ -44,6 +44,5 @@ Run from the `search-confluence/` directory next to `SKILL.md`, or pass the scri
 
 ## References
 
-- [confluence-cql.md](../references/confluence-cql.md) — CQL clauses, examples, Atlassian CQL links.
+- [confluence-cql.md](../../references/confluence-cql.md) — CQL clauses, examples, Atlassian CQL links.
 - [download-confluence-page](../download-confluence-page/SKILL.md) — full page content after search.
-- [skill-authoring.md](../references/skill-authoring.md), [technical-definition-of-done.md](../references/technical-definition-of-done.md).

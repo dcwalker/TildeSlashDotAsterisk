@@ -90,7 +90,7 @@ curl -s \
 
 - Confirm HTTP success; share the page URL.
 - On **409**, re-fetch version and retry (see reference error table).
-- For work tied to repo deliverables, apply [technical-definition-of-done.md](../../references/technical-definition-of-done.md) where relevant.
+
 
 ## Archiving pages
 
@@ -122,6 +122,5 @@ Pitfalls:
 
 ## References
 
-- [confluence-rest-page-write.md](../references/confluence-rest-page-write.md) — ADF (images, links, mentions), error codes, personal spaces, API links.
+- [confluence-rest-page-write.md](../../references/confluence-rest-page-write.md) — ADF (images, links, mentions), error codes, personal spaces, API links.
 - [search-confluence](../search-confluence/SKILL.md), [download-confluence-page](../download-confluence-page/SKILL.md).
-- [skill-authoring.md](../references/skill-authoring.md), [technical-definition-of-done.md](../references/technical-definition-of-done.md).
