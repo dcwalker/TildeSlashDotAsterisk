@@ -19,19 +19,68 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
 
   source $ZSH/oh-my-zsh.sh
 
-  # Custom git prompt with truncated branch name (max 30 chars)
+  # Cache dir for PR number lookups
+  _GIT_PR_CACHE_DIR="${TMPDIR:-/tmp}/zsh_git_pr_cache"
+
+  # Look up the open PR number for a branch (cached, refreshed in background).
+  # Writes "#NNN" or "" to a per-branch cache file; reads stale value while
+  # gh runs so the prompt never blocks on a network call.
+  git_pr_number() {
+    local branch="$1"
+    [[ -z "$branch" ]] && return
+
+    # Only try for GitHub remotes
+    local remote_url
+    remote_url=$(command git remote get-url origin 2>/dev/null)
+    [[ "$remote_url" != *github.com* ]] && return
+
+    command -v gh > /dev/null 2>&1 || return
+
+    mkdir -p "$_GIT_PR_CACHE_DIR"
+    local cache_key="${branch//\//_}"
+    local cache_file="$_GIT_PR_CACHE_DIR/$cache_key"
+    local cache_ttl=60
+
+    local cache_age=99999
+    if [[ -f "$cache_file" ]]; then
+      cache_age=$(( $(date +%s) - $(stat -f %m "$cache_file" 2>/dev/null || echo 0) ))
+    fi
+
+    if [[ $cache_age -ge $cache_ttl ]]; then
+      # Refresh in the background; return stale value this render
+      (
+        local pr_num
+        pr_num=$(gh pr view "$branch" --json number --jq '.number' 2>/dev/null)
+        if [[ -n "$pr_num" ]]; then
+          printf '#%s' "$pr_num" > "$cache_file"
+        else
+          printf '' > "$cache_file"
+        fi
+      ) &!
+    fi
+
+    [[ -f "$cache_file" ]] && cat "$cache_file"
+  }
+
+  # Custom git prompt with truncated branch name (max 50 chars)
   git_prompt_info() {
     local ref
     ref=$(command git symbolic-ref HEAD 2> /dev/null) || \
     ref=$(command git rev-parse --short HEAD 2> /dev/null) || return 0
-    
-    local branch="${ref#refs/heads/}"
+
+    local full_branch="${ref#refs/heads/}"
+    local branch="$full_branch"
     if [[ ${#branch} -gt 50 ]]; then
       branch="${branch:0:30}..."
     fi
-    
+
+    local pr_num
+    pr_num=$(git_pr_number "$full_branch")
+    local pr_suffix=""
+    [[ -n "$pr_num" ]] && pr_suffix="%{$fg[cyan]%}[${pr_num}]%{$reset_color%}"
+
     echo "
-${ZSH_THEME_GIT_PROMPT_PREFIX}${branch}$(parse_git_dirty)${ZSH_THEME_GIT_PROMPT_SUFFIX}"
+${ZSH_THEME_GIT_PROMPT_PREFIX}${branch}$(parse_git_dirty)${ZSH_THEME_GIT_PROMPT_SUFFIX}${pr_suffix}"
   }
   
   # Enable prompt substitution
