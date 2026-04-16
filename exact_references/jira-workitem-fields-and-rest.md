@@ -64,8 +64,8 @@ The parent field is structural: it places an issue inside a hierarchy in the bac
 # List available link types (shows outward descriptions)
 acli jira workitem link type
 
-# Create a link
-acli jira workitem link create --out KEY-A --in KEY-B --type "Blocks" --yes
+# Create a link (--in is the BLOCKER, --out is the BLOCKED issue -- see direction note below)
+acli jira workitem link create --out BLOCKED --in BLOCKER --type "Blocks" --yes
 
 # List links on an issue
 acli jira workitem link list --key KEY-123
@@ -73,7 +73,7 @@ acli jira workitem link list --key KEY-123
 
 ### Inward vs outward direction
 
-**Always confirm direction after creating a link** by running `acli jira workitem view KEY --json --fields issuelinks` and checking the JSON. The direction is correct when the issue that should be the blocker has `outwardIssue` pointing to the blocked issue.
+**Always confirm direction after creating a link** by running `acli jira workitem view KEY --json --fields issuelinks` on the intended blocker issue (or check both sides) and checking the JSON. The direction is correct when the blocker has `outwardIssue` pointing to the blocked issue.
 
 How to read the JSON result:
 
@@ -183,7 +183,7 @@ acli `workitem edit --summary "X"` sets the same summary for all keys. To change
 
 ## Web links (remote links)
 
-The "Add web link" UI option maps to the **Issue remote links** REST API. Issue linking must be enabled in the Jira site settings. Requires the `Link issues` project permission and the `write:jira-work` OAuth scope (granular: `write:issue.remote-link:jira`).
+The "Add web link" UI option maps to the **Issue remote links** REST API. Issue linking must be enabled in the Jira site settings. Requires the `Link issues` project permission. The curl example below uses Basic auth with `ATLASSIAN_USER_EMAIL` and `ATLASSIAN_USER_API_KEY`; if you are using OAuth instead, ensure the token has the `write:jira-work` scope (granular: `write:issue.remote-link:jira`).
 
 ### Create a web link
 
