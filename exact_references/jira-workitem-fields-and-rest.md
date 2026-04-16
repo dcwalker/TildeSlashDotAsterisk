@@ -181,6 +181,42 @@ acli `workitem edit --summary "X"` sets the same summary for all keys. To change
 - **Smart links vs link marks:** Pasting URLs can yield `inlineCard` nodes; a closing `)` glued to the URL can be stored inside `attrs.url` and break navigation; prefer spacing, a clean `link` mark `href`, or the issue picker (see `inlineCard` and `link` in the structure guide).
 - **Verify:** After saving, re-fetch the fields you edited and inspect the returned ADF.
 
+## Web links (remote links)
+
+The "Add web link" UI option maps to the **Issue remote links** REST API. Issue linking must be enabled in the Jira site settings. Requires the `Link issues` project permission and the `write:jira-work` OAuth scope (granular: `write:issue.remote-link:jira`).
+
+### Create a web link
+
+```bash
+curl -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  -X POST "https://your-domain.atlassian.net/rest/api/3/issue/KEY-123/remotelink" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "object": {
+      "url": "https://example.com",
+      "title": "Link display title"
+    },
+    "relationship": "mentioned in"
+  }'
+```
+
+Only `object.url` and `object.title` are required. `relationship` is optional (shows as a label in the UI).
+
+Supply a `globalId` string to make the call idempotent: if a remote link with that `globalId` already exists it is updated rather than duplicated.
+
+### Other operations
+
+| Goal | Method | Path |
+|---|---|---|
+| List all web links on an issue | GET | `/rest/api/3/issue/{key}/remotelink` |
+| Create or upsert (by globalId) | POST | `/rest/api/3/issue/{key}/remotelink` |
+| Get one by link ID | GET | `/rest/api/3/issue/{key}/remotelink/{linkId}` |
+| Replace one by link ID | PUT | `/rest/api/3/issue/{key}/remotelink/{linkId}` |
+| Delete by link ID | DELETE | `/rest/api/3/issue/{key}/remotelink/{linkId}` |
+| Delete by globalId | DELETE | `/rest/api/3/issue/{key}/remotelink?globalId=...` |
+
+Docs: [Issue remote links – REST API v3](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-remote-links/)
+
 ## External links
 
 - Atlassian CLI: https://developer.atlassian.com/cloud/acli/guides/how-to-get-started/

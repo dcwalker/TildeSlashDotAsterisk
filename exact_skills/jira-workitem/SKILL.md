@@ -101,6 +101,7 @@ Then `PUT /rest/api/3/issue/{key}` with `components` if needed (reference).
 - Comment: show draft → explicit approval → `acli jira workitem comment create --key "..." --body "..."` or `--body-file` / `--editor` for ADF.
 - Fields: `acli jira workitem edit --key "..." --summary "..." --description-file ...` or `--from-json` with `"issues": [...]` (no `--key` with `--from-json`). Custom fields, parent: JSON per reference. Components: REST PUT, not acli edit JSON.
 - Links: `acli jira workitem link create --out BLOCKED --in BLOCKER --type "Blocks" --yes` (note: `--in` is the blocker, `--out` is the blocked issue; always verify direction via JSON after creating). See [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md) for direction, link types, and when to use links vs the parent field.
+- Web links (external URLs): acli has no command for this. Use `POST /rest/api/3/issue/{key}/remotelink` with body `{"object": {"url": "...", "title": "..."}}`. See reference for upsert via `globalId`, other operations, and permissions.
 
 **Issue type / workflow:** If simple edit fails, use bulk move REST (reference).
 
