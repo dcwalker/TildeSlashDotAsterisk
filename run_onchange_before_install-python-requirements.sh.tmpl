@@ -14,7 +14,7 @@ fi
 REQUIREMENTS="{{ .chezmoi.sourceDir }}/exact_scripts/requirements.txt"
 
 PIP_FLAGS="--user -q -r $REQUIREMENTS"
-if python3 -c "import sys, pathlib; sys.exit(0 if (pathlib.Path(sys.prefix) / 'EXTERNALLY-MANAGED').exists() else 1)" 2>/dev/null; then
+if python3 -c "import sys, sysconfig, pathlib; sys.exit(0 if (pathlib.Path(sysconfig.get_path('stdlib')) / 'EXTERNALLY-MANAGED').exists() else 1)" 2>/dev/null; then
     PIP_FLAGS="$PIP_FLAGS --break-system-packages"
 fi
 
