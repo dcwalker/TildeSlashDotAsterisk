@@ -22,10 +22,10 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
   # Cache dir for PR number lookups
   _GIT_PR_CACHE_DIR="${TMPDIR:-/tmp}/zsh_git_pr_cache"
 
-  # Look up the open PR number for a branch (cached, refreshed in background).
-  # Writes "#NNN" or "" to a per-branch cache file; reads stale value while
-  # gh runs so the prompt never blocks on a network call.
-  git_pr_number() {
+  # Look up the open PR URL for a branch (cached, refreshed in background).
+  # Writes the full GitHub PR URL or "" to a per-branch cache file; reads stale
+  # value while gh runs so the prompt never blocks on a network call.
+  git_pr_url() {
     local branch="$1"
     [[ -z "$branch" ]] && return
 
@@ -49,13 +49,9 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
     if [[ $cache_age -ge $cache_ttl ]]; then
       # Refresh in the background; return stale value this render
       (
-        local pr_num
-        pr_num=$(gh pr view "$branch" --json number --jq '.number' 2>/dev/null)
-        if [[ -n "$pr_num" ]]; then
-          printf '#%s' "$pr_num" > "$cache_file"
-        else
-          printf '' > "$cache_file"
-        fi
+        local pr_url
+        pr_url=$(gh pr view "$branch" --json url --jq '.url' 2>/dev/null)
+        printf '%s' "$pr_url" > "$cache_file"
       ) &!
     fi
 
@@ -74,13 +70,29 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
       branch="${branch:0:30}..."
     fi
 
-    local pr_num
-    pr_num=$(git_pr_number "$full_branch")
+    local esc=$'\e' bel=$'\a'
+
+    # Wrap branch name in OSC 8 link to GitHub branch page if applicable
+    local branch_display="$branch"
+    local remote_url
+    remote_url=$(command git remote get-url origin 2>/dev/null)
+    if [[ "$remote_url" == *github.com* ]]; then
+      local repo_url="${remote_url%.git}"
+      repo_url="${repo_url/git@github.com:/https://github.com/}"
+      local branch_url="${repo_url}/tree/${full_branch}"
+      branch_display="%{${esc}]8;;${branch_url}${bel}%}${branch}%{${esc}]8;;${bel}%}"
+    fi
+
+    local pr_url
+    pr_url=$(git_pr_url "$full_branch")
     local pr_suffix=""
-    [[ -n "$pr_num" ]] && pr_suffix="%{$fg[cyan]%}[${pr_num}]%{$reset_color%}"
+    if [[ "$pr_url" == https://* ]]; then
+      local pr_num="#${pr_url##*/}"
+      pr_suffix="%{${esc}]8;;${pr_url}${bel}%}%{$fg[cyan]%}[${pr_num}]%{$reset_color%}%{${esc}]8;;${bel}%}"
+    fi
 
     echo "
-${ZSH_THEME_GIT_PROMPT_PREFIX}${branch}$(parse_git_dirty)${ZSH_THEME_GIT_PROMPT_SUFFIX}${pr_suffix}"
+${ZSH_THEME_GIT_PROMPT_PREFIX}${branch_display}$(parse_git_dirty)${ZSH_THEME_GIT_PROMPT_SUFFIX}${pr_suffix}"
   }
   
   # Enable prompt substitution
