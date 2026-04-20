@@ -1030,7 +1030,7 @@ def maybe_write_markdown_with_comments(
         footer_list, base_url, auth, downloaded_attachments
     )
     out_path = output_dir / markdown_basename_with_comments_suffix(md_name)
-    out_path.write_text(header + f"# {title}\n\n" + md_with, encoding="utf-8")
+    out_path.write_text(header + md_with, encoding="utf-8")
     print(f"  Wrote {out_path}")
 
 
@@ -1313,7 +1313,8 @@ def markdown_section_child_links(
             pos = coalesce_child_position(c)
             resolved = nav_position_for_page(position_cache, base_url, cid, auth, pos)
             md_name = markdown_basename(resolved, ctitle)
-            rel = f"children/{sub}/{md_name}"
+            md_basename = md_name[:-3]
+            rel = f"children/{sub}/{md_basename}/{md_name}"
             parts.append(f"- [{ctitle}]({rel})\n")
 
     if others:
@@ -1755,7 +1756,12 @@ def _process_page_success_export(
     position_cache: dict[str, Optional[int]],
     sibling_position: Optional[int],
 ) -> None:
-    """Convert a fetched v1 page dict to Markdown, attachments, and child exports."""
+    """Convert a fetched v1 page dict to Markdown, attachments, and child exports.
+
+    All output for a page (markdown, attachments, comments, children) is nested
+    inside a subdirectory of output_dir named after the markdown file without
+    the .md extension (e.g. 00000057-Page-Title/).
+    """
     title = page.get("title", f"page-{page_id}")
     nav_pos = nav_position_for_page(
         position_cache, base_url, page_id, auth, sibling_position
@@ -1763,10 +1769,14 @@ def _process_page_success_export(
     md_name = markdown_basename(nav_pos, title)
     html_body = page.get("body", {}).get("export_view", {}).get("value", "")
     fm_page = build_page_frontmatter(page, base_url)
+
+    page_dir = output_dir / md_name[:-3]
+    page_dir.mkdir(parents=True, exist_ok=True)
+
     print("Fetching attachments ...")
     attachments = safe_fetch_attachments(base_url, page_id, auth)
     print(f"Found {len(attachments)} attachment(s).")
-    downloaded = download_attachments_for_page(base_url, attachments, output_dir, auth)
+    downloaded = download_attachments_for_page(base_url, attachments, page_dir, auth)
     print("Converting HTML to Markdown ...")
     markdown_body = html_to_markdown(html_body)
     markdown_body = rewrite_attachment_links(markdown_body, downloaded, base_url)
@@ -1777,16 +1787,16 @@ def _process_page_success_export(
         child_section = markdown_section_child_links(
             position_cache, base_url, auth, children
         )
-    output_path = output_dir / md_name
+    output_path = page_dir / md_name
     header = format_yaml_frontmatter(fm_page)
     output_path.write_text(
-        header + f"# {title}\n\n" + markdown_body + child_section, encoding="utf-8"
+        header + markdown_body + child_section, encoding="utf-8"
     )
     print(f"  Wrote {output_path}")
     maybe_write_markdown_with_comments(
         base_url,
         page_id,
-        output_dir,
+        page_dir,
         md_name,
         header,
         title,
@@ -1798,7 +1808,7 @@ def _process_page_success_export(
     )
     if children:
         recurse_export_children(
-            base_url, children, output_dir, auth, path_stack, position_cache
+            base_url, children, page_dir, auth, path_stack, position_cache
         )
 
 
