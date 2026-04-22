@@ -1,93 +1,90 @@
 ---
 name: fix-pr-checks
-description: Investigate the repo's CI (CircleCI, GitHub Actions, etc.), identify checks that can run locally, then fix failures and re-run until all local checks pass. Use when preparing code for commit or PR.
+description: Identify failing PR checks using list-pr-checks.sh, fix the failures locally, and repeat until all checks pass. Use when preparing code for commit or PR.
 ---
 
 # Fix PR Checks
 
-Investigate the repository's CI configuration, build a plan of checks that can reasonably run in the local/dev environment, run those checks, fix any failures, and repeat until all are passing. Skip checks that require a dedicated environment (e.g. Docker-only jobs, cloud secrets, special runners) unless the user's environment is already set up for them.
+Use `list-pr-checks.sh` to identify which PR checks are failing and why, then fix the failures locally and repeat until all checks pass.
 
 ## When to Use
 
 - Use when you want to fix PR/CI check failures before pushing
-- Use when you've made code changes and need to ensure they pass the same checks that run in CI
+- Use when you've made code changes and need to ensure they pass CI
 - Use when preparing code for commit or pull request
 
 ## Instructions
 
 ### Phase 0: Read project conventions
 
-Please start by reviewing the AGENTS.md and CONTRIBUTING.md files in the project (if present). Note any rules about testing, linting, build processes, or CI configuration that may affect which checks to run and how.
+Review AGENTS.md and CONTRIBUTING.md in the project root (if present). Note any rules about testing, linting, build processes, or CI that may affect how to fix failures.
 
-### Phase 1: Investigate the repository
+### Phase 1: Check which checks are failing
 
-Examine the repo to discover what checks exist and which can run locally.
+This skill uses the `list-pr-checks.sh` script. It is available in your PATH as `list-pr-checks.sh`. Use the PATH form for all commands below.
 
-1. **CircleCI**: If `.circleci/config.yml` exists, read it. Note jobs and their steps. Identify which steps run commands that can be run locally (e.g. `yarn install`, `yarn run lint:check`, `npm run test`) and which require a special environment (e.g. Docker images that run external services, jobs that need Artifactory or other secrets, SonarQube upload, catalog lint with external image).
+Review the script's help content first:
 
-2. **GitHub Actions**: If `.github/workflows/` exists, list and read the workflow files. For each job, note the steps. Identify which use standard setup (e.g. `actions/checkout`, `actions/setup-node`) and run scripts or commands that exist in the repo (e.g. `bash scripts/...`, `yarn test`, `npm run lint`) and which require secrets, external services, or special runners.
+```bash
+list-pr-checks.sh --help
+```
 
-3. **Package manager scripts**: Read `package.json` (and if present `package-lock.json`/`yarn.lock`/`pnpm-lock.yaml` to confirm manager). List all scripts (e.g. `test`, `lint`, `typecheck`, `format:check`, `ci:check`, `pr:check`). These are strong candidates for local checks.
+Then run it from the repository root to see every check's status and failure details:
 
-4. **Other config**: Look for config that implies checks (e.g. `eslint.config.*`, `.prettierrc`, `tsconfig.json`, `jest.config.*`, `pyproject.toml` with test/lint sections). These help you know how to run linters and tests.
+```bash
+list-pr-checks.sh
+```
 
-### Phase 2: Build the plan
+The script auto-detects the current branch's PR and prints each check with its status, description, and — for failing CI jobs — the full log output. Read the output carefully to identify:
 
-Produce a concrete plan of checks to run locally.
+- Which checks are failing (marked 🔴)
+- The exact error message or log lines that explain why
 
-1. **Include**:
-   - Unit tests (e.g. `npm test`, `yarn test`, `pnpm test`, `pytest`, `cargo test`).
-   - Linters (e.g. `npm run lint`, `yarn lint:check`, `eslint .`, `ruff check`).
-   - Formatters (e.g. `npm run format:check`, `prettier --check`, `ruff format --check`).
-   - Type checkers (e.g. `tsc --noEmit`, `pyright`).
-   - Any script or command that appears in CI and is clearly intended to run in a normal dev environment (e.g. `scripts/check-unpkg-usage.sh`, `bash scripts/check-eslint-disable.sh`).
+If the PR does not exist yet or no checks have run, the script will say so. In that case, push the branch first and wait for checks to start before re-running.
 
-2. **Skip** (unless the user confirms the environment is set up):
-   - Jobs that run entirely inside a custom Docker image with no local equivalent.
-   - Steps that require CI-only secrets (e.g. Artifactory tokens, SonarQube tokens).
-   - Steps that only upload or report to external services (e.g. coverage upload, SonarQube analysis).
-   - Steps that depend on services not typically running locally (e.g. full Backstage, real Jira).
+### Phase 2: Fix each failure
 
-3. **Order**: List checks in a sensible order (e.g. install dependencies once, then format check, then lint, then typecheck, then tests). If a single script runs multiple checks (e.g. `yarn pr:check` or `npm run ci:check`), you may use that script as one entry if it exists and matches the repo.
+Work through the failing checks one at a time. For each failure:
 
-4. **Document**: Before running anything, briefly state the plan (e.g. "Plan: 1) yarn install, 2) yarn format:check, 3) yarn lint:check, 4) yarn typecheck, 5) yarn test:cov, 6) scripts/check-unpkg-usage.sh, ...") and any checks you are skipping and why.
+1. **Understand the error** from the log output the script provided. Do not read CI config files to figure out what failed — the script already tells you.
 
-### Phase 3: Run checks and fix until all pass
+2. **Determine if it can be fixed locally**. Most failures (lint, format, type errors, test failures, coverage gaps) can be reproduced and fixed in the local environment. Skip checks that require CI-only infrastructure (e.g. a SonarQube quality gate that needs cloud secrets to upload) unless the failure is something you can fix in the code (e.g. insufficient test coverage reported by SonarQube).
 
-1. **Ensure dependencies**: If the project uses a package manager, run install once (e.g. `yarn install`, `npm ci`, `pnpm install`) so later commands can run.
+3. **Reproduce the failure locally** using the relevant package manager script or tool (e.g. `npm run lint:eslint`, `npm run compile`, `npm run test:cov`, `prettier --check`). Derive the command from the error message and the project's `package.json` scripts — do not guess.
 
-2. **Run each planned check** (or a combined script if it matches the plan). Capture full output and exit code.
+4. **Fix the issue** (edit code, tests, or config as appropriate). Prefer auto-fix when available (e.g. `eslint --fix`, `prettier --write`).
 
-3. **If a check fails**:
-   - Identify the failing step and the error (e.g. lint error in file X, failing test in Y, format drift in Z).
-   - Fix the underlying issue (edit code, config, or tests as appropriate). Prefer auto-fix when available (e.g. `yarn format`, `yarn lint:fix`, `eslint --fix`).
-   - Re-run that check (or the combined script) until it passes. Then continue with the next check.
+5. **Re-run the local check** to confirm the fix works before moving on.
 
-4. **Loop**: After fixing one failure, re-run the full set of local checks (or the combined script) to ensure nothing else broke. Repeat until every planned check passes.
+### Phase 3: Push and verify
 
-5. **Stop when**: All checks that can reasonably be run locally are passing. Then summarize what was fixed and what was run.
+After fixing all locally-reproducible failures:
+
+1. Commit and push the changes.
+2. Run `list-pr-checks.sh` again once checks have completed to confirm everything is now green.
+3. If new failures appear (e.g. a check that was previously passing now fails due to your fix), repeat Phase 2 for those.
 
 ### Phase 4: Report
 
-- List which checks were run and that they all passed.
-- Note any checks that were skipped (and why).
-- If something could not be fixed after reasonable attempts, say so and ask the user for guidance.
+- List which checks were fixed and how.
+- Note any checks that were skipped and why (e.g. requires cloud secrets, infrastructure-only).
+- If a failure cannot be fixed after three attempts, stop and ask the user for guidance.
 
 ## Important Notes
 
-- Do not assume a specific command (e.g. `yarn pr:check`) exists. Derive commands from the repo's CI and package.json.
-- Run from the repository root unless a check explicitly requires another directory.
-- Fix errors in an order that respects dependencies (e.g. type errors before lint if lint depends on types).
-- If the same failure persists after 3 fix attempts for a single check, stop and ask the user for guidance rather than looping indefinitely.
+- Always use `list-pr-checks.sh` to find out what is failing. Do not infer failures by reading CI config files.
+- Run local checks from the correct working directory (usually the package subdirectory, not the repo root, for monorepos).
+- If the same failure persists after 3 fix attempts, stop and ask the user rather than looping.
 - If the agent platform enforces an iteration or time limit, summarize progress so the user can re-invoke the skill to continue.
 
 ## Example flow (illustrative)
 
 ```
-1. Investigate: Found .github/workflows/convention-checks.yml and .circleci/config.yml. package.json has test, lint:check, format:check, typecheck.
-2. Plan: Run (1) yarn install, (2) yarn format:check, (3) yarn lint:check, (4) yarn typecheck, (5) yarn test:cov, (6) scripts/check-unpkg-usage.sh, (7) scripts/check-markdown-placement.sh, (8) scripts/check-eslint-disable.sh. Skip: SonarQube job (needs token), catalog_info_lint (Docker image).
-3. Run yarn install; then yarn format:check → failed. Run yarn format, re-run format:check → pass.
-4. Run yarn lint:check → failed. Fix reported ESLint errors, re-run → pass.
-5. Run remaining checks; all pass.
-6. Report: All 8 local checks passed. Skipped SonarQube and catalog_info_lint.
+1. Run list-pr-checks.sh --help to review options.
+2. Run list-pr-checks.sh → see SonarQube failing with "56.5% coverage on new code (required >= 80%)".
+3. Identify which new source lines lack coverage from the SonarQube log.
+4. Add tests locally, run npm run test:cov to confirm coverage improves.
+5. Commit and push.
+6. Run list-pr-checks.sh again → all checks green.
+7. Report: fixed SonarQube coverage gate by adding 2 tests. All 21 checks passing.
 ```
