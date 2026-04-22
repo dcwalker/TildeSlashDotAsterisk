@@ -4,7 +4,7 @@ Usage: get-field-details.py "Field Name" [--site SITE]
 Returns: custom field ID, field type, and (for option fields) list of options.
 
 Requires: ATLASSIAN_USER_EMAIL, ATLASSIAN_USER_API_KEY
-Site: Set ATLASSIAN_SITE (host or https://your-domain.atlassian.net) or pass --site
+Site: Set ATLASSIAN_BASE_URL (host or https://your-domain.atlassian.net) or pass --site
 """
 
 import argparse
@@ -132,10 +132,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--site",
-        default=os.environ.get("ATLASSIAN_SITE"),
+        default=os.environ.get("ATLASSIAN_BASE_URL"),
         help=(
             "Atlassian site: host (e.g. your-domain.atlassian.net) or full base URL "
-            "(e.g. https://your-domain.atlassian.net). Default: ATLASSIAN_SITE env."
+            "(e.g. https://your-domain.atlassian.net). Default: ATLASSIAN_BASE_URL env."
         ),
     )
     args = parser.parse_args()
@@ -147,7 +147,7 @@ def main() -> None:
     site = (args.site or "").strip()
     if not site:
         print(
-            "Error: Site is required. Set ATLASSIAN_SITE or pass --site "
+            "Error: Site is required. Set ATLASSIAN_BASE_URL or pass --site "
             "(e.g. your-domain.atlassian.net or https://your-domain.atlassian.net).",
             file=sys.stderr,
         )

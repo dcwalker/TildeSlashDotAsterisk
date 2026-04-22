@@ -181,6 +181,79 @@ acli `workitem edit --summary "X"` sets the same summary for all keys. To change
 - **Smart links vs link marks:** Pasting URLs can yield `inlineCard` nodes; a closing `)` glued to the URL can be stored inside `attrs.url` and break navigation; prefer spacing, a clean `link` mark `href`, or the issue picker (see `inlineCard` and `link` in the structure guide).
 - **Verify:** After saving, re-fetch the fields you edited and inspect the returned ADF.
 
+## Embedding an image inline in a Jira comment
+
+Jira Cloud stores images in the Atlassian Media service. To embed an image inline in an ADF comment you need the media file UUID, which is separate from the attachment ID. The workflow is:
+
+### Step 1: upload the image as an attachment
+
+```bash
+curl -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  -X POST \
+  -H "X-Atlassian-Token: no-check" \
+  -F "file=@/path/to/image.png;type=image/png" \
+  "https://your-domain.atlassian.net/rest/api/3/issue/KEY-123/attachments"
+```
+
+Note the numeric `id` in the response (e.g. `1234567`). This is the attachment ID, not the media UUID.
+
+### Step 2: get the media service UUID
+
+Follow the redirect from the attachment content URL; the media UUID is in the `location` header:
+
+```bash
+curl -sI -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  "https://your-domain.atlassian.net/rest/api/3/attachment/content/ATTACHMENT_ID" \
+  | grep -i location
+# location: https://api.media.atlassian.com/file/MEDIA-UUID/binary?token=...
+```
+
+Extract the UUID segment from the path (e.g. `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`).
+
+### Step 3: get the issue's numeric ID
+
+```bash
+curl -s -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  "https://your-domain.atlassian.net/rest/api/3/issue/KEY-123?fields=id" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])"
+```
+
+### Step 4: build the ADF mediaSingle node
+
+The `collection` is `contentId-{numericIssueId}`. Set `width` and `height` to the actual pixel dimensions of the image (use `python3 -c "from PIL import Image; print(Image.open('file.png').size)"` or read the PNG IHDR bytes). Use `full-width` layout to fill the comment width.
+
+```json
+{
+  "type": "mediaSingle",
+  "attrs": { "layout": "full-width" },
+  "content": [
+    {
+      "type": "media",
+      "attrs": {
+        "id": "MEDIA-UUID",
+        "type": "file",
+        "collection": "contentId-NUMERIC_ISSUE_ID",
+        "width": 3244,
+        "height": 848
+      }
+    }
+  ]
+}
+```
+
+Place this node at the desired position in the ADF `content` array (e.g. after a paragraph describing the image). Post the comment with:
+
+```bash
+acli jira workitem comment create --key KEY-123 --body-file /path/to/comment.json
+```
+
+### Notes
+
+- Upload quality matters: the image is stored as-is. A low-resolution source file will look pixelated when rendered at full width. Always use the highest-resolution export available.
+- To replace an image: delete the old attachment (`DELETE /rest/api/3/attachment/{id}`), delete the comment, upload the new file, get the new media UUID, and repost.
+- The `layout` option `center` renders the image at a small default size. Use `full-width` or `wide` for larger display.
+- The `width` and `height` attrs on the `media` node control the aspect ratio hint Jira uses; they should match the actual image dimensions.
+
 ## Web links (remote links)
 
 The "Add web link" UI option maps to the **Issue remote links** REST API. Issue linking must be enabled in the Jira site settings. Requires the `Link issues` project permission. The curl example below uses Basic auth with `ATLASSIAN_USER_EMAIL` and `ATLASSIAN_USER_API_KEY`; if you are using OAuth instead, ensure the token has the `write:jira-work` scope (granular: `write:issue.remote-link:jira`).

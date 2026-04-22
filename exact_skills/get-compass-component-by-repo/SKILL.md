@@ -18,12 +18,12 @@ Fetches a Compass component by searching with the repository name as the externa
 - Atlassian GraphQL Gateway access with Basic auth:
   - `ATLASSIAN_USER_EMAIL` – Atlassian account email
   - `ATLASSIAN_USER_API_KEY` – API token
-- Site: `ATLASSIAN_SITE` – Atlassian site host (e.g. `your-domain.atlassian.net`), or pass `--site` to the script. Required; no default.
+- Site: `ATLASSIAN_BASE_URL` – Atlassian site host (e.g. `your-domain.atlassian.net`), or pass `--site` to the script. Required; no default.
 
 ## Instructions
 
 1. Determine the repo name from the git repo (e.g. from `git remote -v` or the current directory name). Use the format your Compass site expects (e.g. `repo-name` or `owner/repo`). Only ask the user if it cannot be determined.
-2. Ensure the site is available: use `ATLASSIAN_SITE` or `--site` if set. If neither is set and the value is not obvious (e.g. from project config), ask the user. Then run `get-component-by-repo.py` with the repo name as the argument.
+2. Ensure the site is available: use `ATLASSIAN_BASE_URL` or `--site` if set. If neither is set and the value is not obvious (e.g. from project config), ask the user. Then run `get-component-by-repo.py` with the repo name as the argument.
 3. Use the script output: component name, type, URL, Jira project URL, and links by type.
 
 ## Output

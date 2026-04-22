@@ -10,7 +10,7 @@ Return custom field ID, field type, and (for option fields) allowed values from 
 ## Inputs
 
 - Field name or partial name (e.g. "Severity", "Environment").
-- `ATLASSIAN_SITE` or `--site`: host (e.g. `your-domain.atlassian.net`) or full base URL (e.g. `https://your-domain.atlassian.net`), consistent with `jira-workitem` helpers.
+- `ATLASSIAN_BASE_URL` or `--site`: host (e.g. `your-domain.atlassian.net`) or full base URL (e.g. `https://your-domain.atlassian.net`), consistent with `jira-workitem` helpers.
 - `ATLASSIAN_USER_EMAIL` and `ATLASSIAN_USER_API_KEY` (Basic auth for REST).
 
 ## Required output structure

@@ -1000,7 +1000,6 @@ def maybe_write_markdown_with_comments(
     output_dir: Path,
     md_name: str,
     header: str,
-    title: str,
     markdown_body: str,
     child_section: str,
     downloaded_attachments: list,
@@ -1740,7 +1739,10 @@ def _write_page_v1_fetch_error_stub(
     nav_pos = nav_position_for_page(
         position_cache, base_url, page_id, auth, sibling_position
     )
-    out_path = output_dir / markdown_basename(nav_pos, title)
+    md_name = markdown_basename(nav_pos, title)
+    page_dir = output_dir / md_name[:-3]
+    page_dir.mkdir(parents=True, exist_ok=True)
+    out_path = page_dir / md_name
     out_path.write_text(format_yaml_frontmatter(fm) + "\n" + body, encoding="utf-8")
     print(f"  Wrote error stub {out_path}")
 
@@ -1769,6 +1771,8 @@ def _process_page_success_export(
     md_name = markdown_basename(nav_pos, title)
     html_body = page.get("body", {}).get("export_view", {}).get("value", "")
     fm_page = build_page_frontmatter(page, base_url)
+    if nav_pos is not None:
+        fm_page["nav_position"] = nav_pos
 
     page_dir = output_dir / md_name[:-3]
     page_dir.mkdir(parents=True, exist_ok=True)
@@ -1799,7 +1803,6 @@ def _process_page_success_export(
         page_dir,
         md_name,
         header,
-        title,
         markdown_body,
         child_section,
         downloaded,

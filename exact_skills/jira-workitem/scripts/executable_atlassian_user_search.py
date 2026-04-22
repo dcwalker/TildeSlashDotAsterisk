@@ -15,7 +15,7 @@ Uses GET /rest/api/3/user/search (see User search API). With --verbose, for each
 Auth: HTTP Basic with email + API token (same pattern as Atlassian docs).
 
 Environment (optional if flags are set):
-  ATLASSIAN_SITE — site base URL, e.g. https://your-domain.atlassian.net
+  ATLASSIAN_BASE_URL — site base URL, e.g. https://your-domain.atlassian.net
   ATLASSIAN_USER_EMAIL — Atlassian account email
   ATLASSIAN_USER_API_KEY — API token
 
@@ -264,8 +264,8 @@ def main() -> int:
     parser.add_argument(
         "-s",
         "--site",
-        default=_env("ATLASSIAN_SITE"),
-        help="Site base URL (or ATLASSIAN_SITE).",
+        default=_env("ATLASSIAN_BASE_URL"),
+        help="Site base URL (or ATLASSIAN_BASE_URL).",
     )
     parser.add_argument(
         "--email",
@@ -338,7 +338,7 @@ def main() -> int:
     if not q:
         parser.error("query is required (positional or -q).")
     if not args.site:
-        parser.error("site is required (-s or ATLASSIAN_SITE).")
+        parser.error("site is required (-s or ATLASSIAN_BASE_URL).")
     if not args.email or not args.token:
         parser.error(
             "email and token are required (--email/--token or env "

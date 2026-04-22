@@ -126,15 +126,79 @@ On 409, re-run `acli confluence page view --id PAGE_ID --include-version --json`
 - To create a page as a child of another page, both must be in the same space.
 - The `title` must be unique within the space for published pages.
 
+### Layout width
+
+Several ADF elements accept a `layout` attribute that controls width. Always ask the user which width to use before creating or updating content that includes these elements.
+
+**Tables** (`table` node, `layout` attr):
+
+| Value | Appearance |
+|---|---|
+| `default` | Column-width (respects page margins) |
+| `wide` | Wider than the content column, extends into margins |
+| `full-width` | Spans the full browser viewport width |
+
+**Images** (`mediaSingle` node, `layout` attr):
+
+| Value | Appearance |
+|---|---|
+| `center` | Centered at natural width within the content column |
+| `wide` | Wider than the content column |
+| `full-width` | Spans the full browser viewport width |
+| `align-start` | Left-aligned, text wraps around the right |
+| `align-end` | Right-aligned, text wraps around the left |
+| `wrap-left` | Inline float left with text wrap |
+| `wrap-right` | Inline float right with text wrap |
+
+When the user has not specified a width, ask before proceeding. For tables with many columns or dense content, `full-width` is usually the most readable choice.
+
 ### Personal spaces
 
-Personal spaces are identifiable and writable via the same API. Use `--type personal` to filter them:
+Personal spaces are identifiable and writable via the same API.
+
+**Deriving the personal space key from an account ID:**
+
+The personal space key is the Atlassian account ID with the colon and all hyphens removed, prefixed with `~`. For example, account ID `712020:8f09bad3-5d47-467d-bf55-2b5ccf1f88ff` becomes space key `~7120208f09bad35d47467dbf552b5ccf1f88ff`. This key appears in the space URL: `https://yoursite.atlassian.net/wiki/spaces/~7120208f09bad35d47467dbf552b5ccf1f88ff/overview`.
+
+**Looking up the space ID by key:**
+
+Once you have the derived key, the most reliable approach is to query directly by key using `acli`:
 
 ```bash
-acli confluence space list --type personal --json
+acli confluence space list --keys ~7120208f09bad35d47467dbf552b5ccf1f88ff --json
 ```
 
-The response includes the numeric `id` needed for `spaceId` in create/update requests. [Inference] Personal space keys often follow a `~accountId` format (e.g. `~712020:abc123`), which makes them distinguishable in the `key` field even without the type filter. Once you have the space ID, creating or updating pages in a personal space works identically to any other space. By default only the space owner has write access, so the authenticated user must be the owner or must have been granted explicit write permission.
+Or via the REST API v2:
+
+```bash
+curl -s \
+  -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  "https://yoursite.atlassian.net/wiki/api/v2/spaces?keys=~STRIPPED_ACCOUNT_ID" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); [print('id:', s.get('id'), '| name:', s.get('name')) for s in d.get('results',[])]"
+```
+
+**Browsing all personal spaces:**
+
+`acli confluence space list --type personal` returns personal spaces but defaults to 50 results and caps at 250 per page. Use `-l 250` to maximize the result set, but be aware that large Confluence instances may have more than 250 personal spaces and the command does not support pagination:
+
+```bash
+acli confluence space list --type personal -l 250
+```
+
+This is useful for browsing or searching by name, but it is not a reliable way to find a specific user's space in a large instance. Use the key-derivation approach above when you know the account ID.
+
+**Getting the current user's account ID:**
+
+```bash
+curl -s \
+  -u "$ATLASSIAN_USER_EMAIL:$ATLASSIAN_USER_API_KEY" \
+  "https://yoursite.atlassian.net/wiki/rest/api/user/current" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('accountId'))"
+```
+
+Then strip the colon and hyphens: `echo "712020:8f09bad3-5d47-467d-bf55-2b5ccf1f88ff" | tr -d ':-'` → `7120208f09bad35d47467dbf552b5ccf1f88ff`, and prefix with `~`.
+
+The response includes the numeric `id` needed for `spaceId` in create/update requests. Once you have the space ID, creating or updating pages in a personal space works identically to any other space. By default only the space owner has write access, so the authenticated user must be the owner or must have been granted explicit write permission.
 
 ## External links
 

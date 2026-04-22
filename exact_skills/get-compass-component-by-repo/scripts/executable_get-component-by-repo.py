@@ -5,7 +5,7 @@ Looks up a Compass component by repo name (external alias) and prints
 component name, type, URL, Jira project URL, and links by type.
 
 Requires: ATLASSIAN_USER_EMAIL, ATLASSIAN_USER_API_KEY
-Site: Set ATLASSIAN_SITE (e.g. your-domain.atlassian.net) or pass --site
+Site: Set ATLASSIAN_BASE_URL (e.g. your-domain.atlassian.net) or pass --site
 """
 
 import argparse
@@ -243,8 +243,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--site",
-        default=os.environ.get("ATLASSIAN_SITE"),
-        help="Atlassian site host (e.g. your-domain.atlassian.net). Default: ATLASSIAN_SITE env.",
+        default=os.environ.get("ATLASSIAN_BASE_URL"),
+        help="Atlassian site host (e.g. your-domain.atlassian.net). Default: ATLASSIAN_BASE_URL env.",
     )
     args = parser.parse_args()
     repo_name = args.repo_name.strip()
@@ -253,7 +253,7 @@ def main() -> int:
         return 1
     if not args.site or not args.site.strip():
         print(
-            "Error: Site is required. Set ATLASSIAN_SITE or pass --site (e.g. your-domain.atlassian.net).",
+            "Error: Site is required. Set ATLASSIAN_BASE_URL or pass --site (e.g. your-domain.atlassian.net).",
             file=sys.stderr,
         )
         return 1
