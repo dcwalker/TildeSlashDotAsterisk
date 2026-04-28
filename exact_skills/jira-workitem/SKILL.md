@@ -180,6 +180,10 @@ Then `PUT /rest/api/3/issue/{key}` with `components` if needed (reference).
 - Links: `acli jira workitem link create --out BLOCKED --in BLOCKER --type "Blocks" --yes` (note: `--in` is the blocker, `--out` is the blocked issue; always verify direction via JSON after creating). See [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md) for direction, link types, and when to use links vs the parent field.
 - Web links (external URLs): acli has no command for this. Use `POST /rest/api/3/issue/{key}/remotelink` with body `{"object": {"url": "...", "title": "..."}}`. See reference for upsert via `globalId`, other operations, and permissions.
 
+#### Promote description links to web links (always required)
+
+After any create, description edit, or comment post, scan the ADF content for all URLs. For every URL found, add it as a remote link using `POST /rest/api/3/issue/{key}/remotelink`. Use the URL itself as the title if no human-readable label is available in the ADF node. Do this automatically without prompting the user; skip only if the content contains no URLs.
+
 **Issue type / workflow:** If simple edit fails, use bulk move REST (reference).
 
 ### Phase 4: Verify
