@@ -32,8 +32,10 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 COMPOSER_DATA_SQL = "SELECT value FROM ItemTable WHERE key='composer.composerData'"
+COMPOSER_DATA_UPSERT = "INSERT OR REPLACE INTO ItemTable (key, value) VALUES ('composer.composerData', ?)"
 COMPOSER_CHAT_PREFIX = "workbench.panel.composerChatViewPane."
 MERGE_KEYS = {"aiService.generations", "aiService.prompts"}
+STATE_DB_NAME = "state.vscdb"
 
 
 # ---------------------------------------------------------------------------
@@ -104,24 +106,58 @@ def count_sessions_with_content(db_path: Path) -> int:
         return 0
 
 
+def _global_session_counts(user_dir: Path) -> dict[str, int]:
+    """
+    Return a mapping of workspaceIdentifier.id → session count from the global
+    composer.composerHeaders index.  Used to surface cloud-only workspaces whose
+    local DB has already been cleared.
+    """
+    global_db = user_dir / "globalStorage" / STATE_DB_NAME
+    if not global_db.exists():
+        return {}
+    try:
+        con = sqlite3.connect(f"file:{global_db}?mode=ro", uri=True)
+        row = con.execute(GLOBAL_HEADERS_SQL).fetchone()
+        con.close()
+    except sqlite3.Error:
+        return {}
+    if not row:
+        return {}
+    counts: dict[str, int] = {}
+    for entry in json.loads(row[0]).get("allComposers", []):
+        ws_id = entry.get("workspaceIdentifier", {}).get("id", "")
+        # Skip ephemeral / empty-window identifiers
+        if ws_id and ws_id != "empty-window" and not ws_id.isdigit():
+            counts[ws_id] = counts.get(ws_id, 0) + 1
+    return counts
+
+
 def discover_workspaces(user_dir: Path) -> list[dict]:
     ws_storage = user_dir / "workspaceStorage"
     if not ws_storage.is_dir():
         sys.exit(f"Error: workspaceStorage not found at {ws_storage}")
 
+    global_counts = _global_session_counts(user_dir)
+
     workspaces = []
     for ws_dir in sorted(ws_storage.iterdir()):
-        db = ws_dir / "state.vscdb"
+        db = ws_dir / STATE_DB_NAME
         if not db.is_file():
             continue
-        n = count_sessions_with_content(db)
-        if n == 0:
+        local_n = count_sessions_with_content(db)
+        global_n = global_counts.get(ws_dir.name, 0)
+        # Include workspaces with local content OR sessions in the global index
+        if local_n == 0 and global_n == 0:
             continue
         workspaces.append({
             "hash": ws_dir.name,
             "db": db,
             "label": workspace_label(ws_dir),
-            "composers": n,
+            # Show local count when available; fall back to global count so
+            # cloud-only workspaces still show a meaningful number
+            "composers": local_n if local_n > 0 else global_n,
+            # Flag used to skip local DB processing for global-only workspaces
+            "local_composers": local_n,
         })
 
     return sorted(workspaces, key=lambda w: w["label"].lower())
@@ -195,10 +231,7 @@ def _merge_composer_data(
         src_row[0],
     )
     stats["composers_added"] += added
-    target_con.execute(
-        "INSERT OR REPLACE INTO ItemTable (key, value) VALUES ('composer.composerData', ?)",
-        (merged_json,),
-    )
+    target_con.execute(COMPOSER_DATA_UPSERT, (merged_json,))
     print(f"  Composers merged: +{added}")
 
 
@@ -244,10 +277,27 @@ def _merge_aux_keys(
             )
 
 
+def _clear_source_db(src_db: Path, stats: dict) -> None:
+    """Remove all chat sessions from a source DB after they have been merged."""
+    try:
+        con = sqlite3.connect(str(src_db))
+        con.execute(f"DELETE FROM ItemTable WHERE key LIKE '{COMPOSER_CHAT_PREFIX}%'")
+        con.execute(COMPOSER_DATA_UPSERT, (json.dumps({"allComposers": []}),))
+        for key in MERGE_KEYS:
+            con.execute("DELETE FROM ItemTable WHERE key=?", (key,))
+        con.commit()
+        con.close()
+        stats["sources_cleared"] += 1
+        print("  Source DB cleared.")
+    except sqlite3.Error as e:
+        print(f"  Warning: could not clear source DB: {e}")
+
+
 def _process_source(
     source: dict,
     target_con: sqlite3.Connection,
     stats: dict,
+    delete_sources: bool = False,
 ) -> None:
     print(f"\nProcessing: {source['label']} ({source['composers']} sessions)")
     try:
@@ -260,6 +310,8 @@ def _process_source(
     _merge_aux_keys(src_con, target_con)
     src_con.close()
     stats["sources_processed"] += 1
+    if delete_sources:
+        _clear_source_db(source["db"], stats)
 
 
 # ---------------------------------------------------------------------------
@@ -413,10 +465,7 @@ def _repair_orphaned_index_entries(
             _make_stub_entry(composer_id, global_by_id, db_mtime_ms)
         )
 
-    target_con.execute(
-        "INSERT OR REPLACE INTO ItemTable (key, value) VALUES ('composer.composerData', ?)",
-        (json.dumps(index_data),),
-    )
+    target_con.execute(COMPOSER_DATA_UPSERT, (json.dumps(index_data),))
     stats["orphans_repaired"] = len(orphans)
     print(f"\nRepaired {len(orphans)} orphaned chat session(s).")
 
@@ -425,10 +474,10 @@ def _repair_orphaned_index_entries(
 # Core consolidation
 # ---------------------------------------------------------------------------
 
-def consolidate(sources: list[dict], target: dict, user_dir: Path) -> dict:
+def consolidate(sources: list[dict], target: dict, user_dir: Path, delete_sources: bool = False) -> dict:
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     target_db = target["db"]
-    global_db = user_dir / "globalStorage" / "state.vscdb"
+    global_db = user_dir / "globalStorage" / STATE_DB_NAME
 
     # Backup both databases
     shutil.copy2(target_db, target_db.with_suffix(f".backup-{ts}"))
@@ -441,21 +490,31 @@ def consolidate(sources: list[dict], target: dict, user_dir: Path) -> dict:
         "composers_added": 0,
         "chats_added": 0,
         "sources_processed": 0,
+        "sources_cleared": 0,
         "orphans_repaired": 0,
         "global_reassigned": 0,
         "global_injected": 0,
         "transcripts_copied": 0,
+        "transcripts_deleted": 0,
         "transcripts_injected": 0,
+        "projects_removed": 0,
     }
 
     # Load global index for metadata lookups during orphan repair
     _, global_by_id = _load_global_headers(global_db)
 
-    # Merge local workspace databases
+    # Merge local workspace databases (skip global-only workspaces — no local DB to merge)
     target_con = sqlite3.connect(target_db)
     for source in sources:
-        if source["hash"] != target["hash"]:
-            _process_source(source, target_con, stats)
+        if source["hash"] == target["hash"]:
+            continue
+        if source.get("local_composers", source["composers"]) == 0:
+            # Global-only workspace: nothing in the local DB to copy; the global
+            # reassignment step below will move its cloud sessions to the target.
+            print(f"\nSkipping local DB for {source['label']} (cloud sessions only)")
+            stats["sources_processed"] += 1
+            continue
+        _process_source(source, target_con, stats, delete_sources=delete_sources)
     _repair_orphaned_index_entries(target_con, target_db, global_by_id, stats)
     target_con.commit()
 
@@ -472,7 +531,7 @@ def consolidate(sources: list[dict], target: dict, user_dir: Path) -> dict:
 
     # Copy cloud agent transcripts from source project dirs into the target project dir
     cursor_projects = Path.home() / ".cursor" / "projects"
-    _merge_transcripts(sources, target, cursor_projects, stats)
+    _merge_transcripts(sources, target, cursor_projects, stats, delete_sources=delete_sources)
 
     # Inject any transcript-only sessions (not yet in global index) into the global index
     all_workspaces = sources + [target]
@@ -614,11 +673,48 @@ def _inject_transcript_only_sessions(
     stats["transcripts_injected"] = len(new_entries)
 
 
+def _sync_source_transcripts(
+    src_transcripts: Path,
+    target_transcripts: Path,
+    delete_sources: bool,
+) -> tuple[int, int]:
+    """Copy sessions from src to target; optionally delete from src. Returns (copied, deleted)."""
+    copied = 0
+    deleted = 0
+    for session_dir in src_transcripts.iterdir():
+        dest = target_transcripts / session_dir.name
+        if not dest.exists():
+            shutil.copytree(session_dir, dest)
+            copied += 1
+        if delete_sources:
+            shutil.rmtree(session_dir)
+            deleted += 1
+    return copied, deleted
+
+
+def _cleanup_project_dir(project_dir: Path) -> bool:
+    """
+    Remove an empty agent-transcripts directory and, if the project directory
+    contains nothing else of substance, remove it too.
+    Returns True if the project directory was removed.
+    """
+    transcripts_dir = project_dir / "agent-transcripts"
+    if transcripts_dir.is_dir() and not any(transcripts_dir.iterdir()):
+        transcripts_dir.rmdir()
+
+    # Remove the project dir only if it's now completely empty
+    if project_dir.is_dir() and not any(project_dir.iterdir()):
+        project_dir.rmdir()
+        return True
+    return False
+
+
 def _merge_transcripts(
     sources: list[dict],
     target: dict,
     cursor_projects: Path,
     stats: dict,
+    delete_sources: bool = False,
 ) -> None:
     """Copy cloud agent transcript directories from source projects into the target project."""
     if not cursor_projects.is_dir():
@@ -629,22 +725,30 @@ def _merge_transcripts(
         print("\nWarning: could not find target transcript directory — skipping transcript merge.")
         return
 
-    copied = 0
+    total_copied = 0
+    total_deleted = 0
+    projects_removed = 0
     for source in sources:
         if source["hash"] == target["hash"]:
             continue
         src_transcripts = _find_transcript_dir(source["label"], cursor_projects)
         if not src_transcripts:
             continue
-        for session_dir in src_transcripts.iterdir():
-            dest = target_transcripts / session_dir.name
-            if not dest.exists():
-                shutil.copytree(session_dir, dest)
-                copied += 1
+        copied, deleted = _sync_source_transcripts(src_transcripts, target_transcripts, delete_sources)
+        total_copied += copied
+        total_deleted += deleted
+        if delete_sources and _cleanup_project_dir(src_transcripts.parent):
+            projects_removed += 1
 
-    if copied:
-        stats["transcripts_copied"] = copied
-        print(f"\nTranscripts: copied {copied} session(s) into target project directory.")
+    if total_copied:
+        stats["transcripts_copied"] = total_copied
+        print(f"\nTranscripts: copied {total_copied} session(s) into target project directory.")
+    if total_deleted:
+        stats["transcripts_deleted"] = total_deleted
+        print(f"Transcripts: deleted {total_deleted} session(s) from source project directories.")
+    if projects_removed:
+        stats["projects_removed"] = projects_removed
+        print(f"Transcripts: removed {projects_removed} now-empty project director(ies).")
 
 
 # ---------------------------------------------------------------------------
@@ -829,7 +933,46 @@ def multi_select(items: list[dict], title: str) -> list[dict]:
 # Main
 # ---------------------------------------------------------------------------
 
+def _run_repair(user_dir: Path) -> None:
+    """
+    Standalone repair mode: scan all agent-transcript directories and inject
+    any sessions missing from composer.composerHeaders into the global index.
+    Safe to run anytime after Cursor has fully quit.
+    """
+    global_db = user_dir / "globalStorage" / STATE_DB_NAME
+    cursor_projects = Path.home() / ".cursor" / "projects"
+
+    print("\nScanning workspaces for known workspace identifiers…")
+    workspaces = discover_workspaces(user_dir)
+
+    stats: dict = {"transcripts_injected": 0}
+    _inject_transcript_only_sessions(global_db, cursor_projects, workspaces, stats)
+
+    injected = stats["transcripts_injected"]
+    if injected:
+        print(f"\nDone. Injected {injected} transcript-only session(s) into the global index.")
+        print("Start Cursor to see the sessions in the Agents Window.")
+    else:
+        print("\nDone. All transcript sessions are already in the global index — nothing to do.")
+
+
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Consolidate Cursor chat history across workspaces.",
+    )
+    parser.add_argument(
+        "--repair",
+        action="store_true",
+        help=(
+            "Repair mode: scan all agent-transcript directories and inject any "
+            "sessions missing from the global index (composer.composerHeaders). "
+            "Use this to make transcript-only sessions appear in the Agents Window "
+            "without doing a full consolidation."
+        ),
+    )
+    args = parser.parse_args()
+
     print("=" * 60)
     print("  Cursor Chat Consolidation Tool")
     print("=" * 60)
@@ -837,11 +980,16 @@ def main() -> None:
     if cursor_is_running():
         sys.exit(
             "\nError: Cursor is currently running.\n"
-            "Please quit Cursor completely before consolidating chats."
+            "Please quit Cursor completely before running this tool."
         )
 
     user_dir = cursor_user_dir()
     print(f"\nCursor user directory: {user_dir}")
+
+    if args.repair:
+        _run_repair(user_dir)
+        return
+
     print("Scanning workspaces…")
     workspaces = discover_workspaces(user_dir)
 
@@ -877,28 +1025,36 @@ def main() -> None:
         print("\nNo source workspaces selected. Nothing to do.")
         sys.exit(0)
 
-    # Confirm
+    # Confirm — and ask whether to delete sessions from sources after merging
     print(f"\nWill merge {len(sources)} workspace(s) → {target['label']}")
+    delete_sources = input(
+        "Delete sessions from source workspaces after merging? [Y/n] "
+    ).strip().lower()
+    delete_sources_flag = delete_sources != "n"
+
     confirm = input("Proceed? [y/N] ").strip().lower()
     if confirm != "y":
         print("Aborted.")
         sys.exit(0)
 
     # Consolidate
-    stats = consolidate(sources, target, user_dir)
+    stats = consolidate(sources, target, user_dir, delete_sources=delete_sources_flag)
 
     print("\n" + "=" * 60)
     print("  Done.")
-    print(f"  Sources processed : {stats['sources_processed']}")
-    print(f"  Composers added   : {stats['composers_added']}")
-    print(f"  Chat panes copied : {stats['chats_added']}")
-    print(f"  Orphans repaired  : {stats['orphans_repaired']}")
-    print(f"  Global reassigned : {stats['global_reassigned']}")
-    print(f"  Global injected   : {stats['global_injected']}")
-    print(f"  Transcripts copied: {stats['transcripts_copied']}")
-    print(f"  Transcripts injected: {stats['transcripts_injected']}")
+    print(f"  Sources processed    : {stats['sources_processed']}")
+    print(f"  Composers added      : {stats['composers_added']}")
+    print(f"  Chat panes copied    : {stats['chats_added']}")
+    print(f"  Orphans repaired     : {stats['orphans_repaired']}")
+    print(f"  Sources cleared      : {stats['sources_cleared']}")
+    print(f"  Global reassigned    : {stats['global_reassigned']}")
+    print(f"  Global injected      : {stats['global_injected']}")
+    print(f"  Transcripts copied   : {stats['transcripts_copied']}")
+    print(f"  Transcripts deleted  : {stats['transcripts_deleted']}")
+    print(f"  Transcripts injected : {stats['transcripts_injected']}")
+    print(f"  Project dirs removed : {stats['projects_removed']}")
     print("=" * 60)
-    print("\nOpen Cursor and reload the target workspace to see all chats.")
+    print("\nStart Cursor to see all chats in the Agents Window.")
 
 
 if __name__ == "__main__":
