@@ -12,7 +12,7 @@ Review and systematically resolve SonarQube findings (Issues, Security Hotspots,
 - Branch/PR context the Sonar script can resolve to SonarQube data
 - Optional: `AGENTS.md`, `CONTRIBUTING.md` for repo conventions
 - User intent: fix valid findings, document false positives, or suppress (suppression only with explicit user approval)
-- Environment variables: `SONAR_HOST_URL`, `SONAR_TOKEN` (required for both the script and `sonar-scanner`)
+- Environment variables: `SONAR_TOKEN` (required); `SONAR_HOST_URL` (defaults to `https://sonarcloud.io` for cloud projects)
 
 ## Required output structure
 
@@ -42,7 +42,11 @@ Review and systematically resolve SonarQube findings (Issues, Security Hotspots,
 
 ### Phase 2: Scan
 
-- Run `sonar-scanner` from the project root and wait for it to finish.
+- Read `sonar-project.properties` (or the relevant properties file) to identify the project key — do not guess or hardcode it.
+- Run any language-specific prerequisites before invoking `sonar-scanner` (e.g., coverage generation for Python, build-wrapper + xccov for Swift/CFamily). See [local-sonar-scan.md](../../references/local-sonar-scan.md) for details.
+- For monorepos with multiple properties files, run `sonar-scanner` once per project, passing `-Dproject.settings=<file>` to select the appropriate file.
+- `SONAR_TOKEN` must be set in the environment (or as `sonar.token` in the properties file) before running.
+- `sonar.host.url` must point to the SonarQube / SonarCloud server. It is typically set in the properties file. If not, pass it via `-Dsonar.host.url=<url>`. The scanner defaults to `http://localhost:9000` when unset — it does not default to sonarcloud.io.
 - After `sonar-scanner` exits, **poll the server** until the new analysis is published before reading results.
 
   **Polling strategy** — use the SonarQube API to detect the new analysis:
@@ -138,3 +142,4 @@ Review and systematically resolve SonarQube findings (Issues, Security Hotspots,
 ## References
 
 - [resolve-sonarqube-workflow.md](../../references/resolve-sonarqube-workflow.md) — script usage, Steps 1–4, commit and suppression rules
+- [local-sonar-scan.md](../../references/local-sonar-scan.md) — running sonar-scanner locally, language prerequisites, monorepo patterns
