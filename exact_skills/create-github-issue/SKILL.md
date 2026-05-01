@@ -26,17 +26,25 @@ This skill requires:
 
 ### Step 1: Review Project Documentation
 
-Before creating an issue, review the following project documentation if available:
-- AGENTS.md - Project-specific guidance for AI agents
-- CONTRIBUTING.md - Contribution guidelines and standards
-- ISSUE_TEMPLATE.md / `.github/ISSUE_TEMPLATE/*` - Preferred issue format
-- ISSUE_REPORTING_GUIDELINES.md (or similar) - Reporting expectations
+Before creating an issue, read the following if available:
+- `AGENTS.md` — Project-specific guidance for AI agents
+- `CONTRIBUTING.md` — Contribution guidelines and standards
+- `.github/ISSUE_TEMPLATE/*` or `ISSUE_TEMPLATE.md` — Preferred issue format
+- `ISSUE_REPORTING_GUIDELINES.md` (or similar) — Reporting expectations
+- `docs/glossary.md` — Project terminology and definitions
 
-These documents provide important context about required issue details and formatting.
+#### Glossary from docs/glossary.md
+
+If `docs/glossary.md` exists, read it before drafting any field values.
+
+Use glossary terms and definitions when:
+- Writing the issue title or body
+- Selecting labels, milestones, or projects where a glossary term maps to an option
+- Describing steps to reproduce, expected behavior, or acceptance criteria
+
+Prefer exact glossary terms over synonyms or informal language when they apply to the issue being filed.
 
 ### Step 2: Verify Authentication
-
-Check if `gh` is authenticated:
 
 ```bash
 gh auth status
@@ -48,29 +56,57 @@ If not authenticated, prompt the user to authenticate first:
 gh auth login
 ```
 
-### Step 3: Gather Required Information
+### Step 3: Discover Available Values
 
-The following fields are required to create an issue. If any are missing, stop and ask the user:
+Before prompting the user for field values, discover what is available in the target repository:
 
-1. Repository (for example, `"owner/repo"` or use current repo)
+```bash
+# Labels
+gh label list --repo "OWNER/REPO" --limit 100
+
+# Milestones
+gh milestone list --repo "OWNER/REPO"
+
+# Projects
+gh project list --owner "OWNER"
+```
+
+Also fetch recent similar issues for context and to inform suggested values:
+
+```bash
+gh issue list --repo "OWNER/REPO" --limit 10 --state all --json title,labels,milestone,assignees,body
+```
+
+Use this context to form suggested values for each field.
+
+### Step 4: Gather and Suggest Field Values
+
+Prompt the user for a value for every available field. For each field:
+
+1. Use the discovered values (labels, milestones, projects) and recent issues to form a suggested value.
+2. Present the suggestion and ask for confirmation or a correction.
+3. For fields with a fixed set of allowed values (labels, milestones), always display the options. Never suggest a value not in the list.
+4. Group fields into a single prompt where possible to reduce back-and-forth — present all optional fields together with suggested values and ask the user to confirm, change, or skip each one.
+5. The only exception is when you are highly confident a value is correct and unambiguous (for example, the repository when it is clear from the git remote). In that case, state the value you will use and give the user a chance to object before proceeding.
+
+Required:
+1. Repository (infer from git remote and confirm, or ask)
 2. Title
 
 Optional but recommended:
-- Body/description (Markdown supported)
-- Labels (comma-separated)
-- Assignees (comma-separated GitHub usernames)
+- Body/description
+- Labels
+- Assignees
 - Milestone
 - Project
 
-### Step 4: Build Issue Body Draft
+### Step 5: Build Issue Body Draft
 
-Read and apply the repository issue guidance before drafting:
-- `ISSUE_REPORTING_GUIDELINES.md` (or linked equivalent)
-- `.github/ISSUE_TEMPLATE/*` if present
+Apply the repository issue guidance from Step 1 when drafting:
+- Match the structure from `.github/ISSUE_TEMPLATE/*` if present
+- Use exact terms from `docs/glossary.md` where applicable
 
-Then create a concise Markdown draft in `/tmp/github-issue-body.md` that matches the required sections for the specific issue type (bug, enhancement, task, etc.), without copying full guideline text into the issue.
-
-Example command:
+Write the draft to `/tmp/github-issue-body.md`:
 
 ```bash
 cat > /tmp/github-issue-body.md <<'EOF'
@@ -78,7 +114,7 @@ cat > /tmp/github-issue-body.md <<'EOF'
 EOF
 ```
 
-### Step 5: Present Draft to User
+### Step 6: Present Draft to User
 
 Before creating the issue, present a clear summary:
 
@@ -97,19 +133,16 @@ Body:
 [RENDERED_MARKDOWN_BODY]
 ```
 
-Important:
-- Present the issue body as readable Markdown text, not just a file path.
+- Present the body as readable Markdown text, not a file path.
 - Do not create the issue until explicit approval is received.
 
-Ask the user: "Would you like to proceed with creating this issue? (yes/no)"
+Ask: "Would you like to proceed with creating this issue? (yes/no)"
 
-If the user requests changes, update the draft and present again.
+If the user requests changes, update the draft and present again. If anything is unclear, stop and ask before proceeding.
 
-If anything in the description or requirements is unclear, stop and ask for clarification before proceeding.
+### Step 7: Create the Issue
 
-### Step 6: Create the Issue
-
-Once approved, create the issue with `gh issue create`:
+Once approved:
 
 ```bash
 gh issue create \
@@ -124,22 +157,19 @@ Add optional flags only when provided:
 - `--milestone "MILESTONE"`
 - `--project "PROJECT"`
 
-Capture the output URL (for example, `https://github.com/owner/repo/issues/123`).
-
-### Step 7: Share the Result
+### Step 8: Share the Result
 
 Share the created issue as a clickable link:
 
 ```
-Issue created successfully: [#123](https://github.com/owner/repo/issues/123)
+Issue created: [#123](https://github.com/owner/repo/issues/123)
 ```
 
-If possible, include both issue number and URL.
+Clean up `/tmp/github-issue-body.md` after successful creation.
 
 ## Error Handling
 
 If issue creation fails:
-
 1. Check the `gh` error message
 2. Common issues:
    - Authentication expired or insufficient scopes
@@ -148,15 +178,6 @@ If issue creation fails:
    - Repository does not exist or was mistyped
 3. Display the error to the user and suggest corrective action
 4. Offer to retry after fixing the issue
-
-## Important Notes
-
-- Always validate required information before attempting to create the issue
-- Always show a draft and get explicit approval before creating
-- If issue details are ambiguous, stop and ask for clarification
-- Keep temporary files in `/tmp` (or user-specified location)
-- Clean up temporary files after successful creation when practical
-- If no repository is provided, infer from local git remote and confirm with the user
 
 ## Related Documentation
 

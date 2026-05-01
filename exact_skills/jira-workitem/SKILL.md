@@ -88,6 +88,17 @@ Based on the result, prompt the user with one of these options before proceeding
 
 Do not set the team field until the user confirms. Once confirmed, use `PUT /rest/api/3/issue/{key}` with `{"fields": {"customfield_NNNNN": {"id": "TEAM_UUID"}}}`, where `customfield_NNNNN` is the Team field ID discovered via `/rest/api/3/field` or editmeta (see reference).
 
+#### Glossary from docs/glossary.md
+
+Check for a `docs/glossary.md` file in the repo root (or nearest ancestor directory). If found, read it before drafting any field values.
+
+Use glossary terms and definitions when:
+- Writing the issue summary or description
+- Populating free-text custom fields
+- Selecting from allowed values where a glossary term maps to an option
+
+Prefer exact glossary terms over synonyms or informal language when they apply to the issue being filed.
+
 ### Phase 2: Design
 
 - **Create:** Generate template:
