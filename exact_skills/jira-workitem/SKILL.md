@@ -26,6 +26,32 @@ Create or edit Jira work items with acli. Parent, standard/custom components, re
 - If not authenticated: `acli jira auth login --site "..." --email "..." --token` or `--web`.
 - For parent, issue links, components, required selects, or bulk operations, open [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md).
 
+#### Duplicate and similar ticket check
+
+Before creating any new work item, search the target project for existing tickets with similar summaries. Extract 2-3 keywords from the proposed summary and run:
+
+```bash
+acli jira workitem search --jql "project = PROJ AND summary ~ \"keyword1\" AND summary ~ \"keyword2\" AND statusCategory != Done" --limit 10 --fields "summary,status" 2>&1
+```
+
+Evaluate the results differently depending on the operation:
+
+**When creating:**
+- **Duplicate (direct overlap):** The existing ticket covers the same work. Present it to the user and ask: "This looks like a duplicate of [KEY] ([summary]). Create anyway, or add a comment to the existing ticket instead?"
+  - If the user chooses to add a comment, follow the comment workflow (show draft, get approval, post via REST API with ADF).
+  - If the user chooses to create anyway, proceed.
+- **Similar (partial overlap):** The existing ticket is related but not the same work. Present it to the user and ask: "Found a related ticket: [KEY] ([summary]). Should I link it as a related item after creation?"
+  - If yes, create the issue then add a "Relates" link automatically.
+  - If no, proceed without linking.
+- **No match:** Proceed without comment.
+
+**When updating:**
+- Skip the duplicate check entirely.
+- Only look for similar/related tickets and offer to link them. Ask: "Found a related ticket: [KEY] ([summary]). Should I link it as a related item?"
+- **No match:** Proceed without comment.
+
+Do not skip this check even when creating multiple tickets in bulk — run it for each one before creating it.
+
 #### Component pre-fill from catalog-info.yaml
 
 When creating or updating a ticket, check for a `catalog-info.yaml` file in the repo root (or the nearest one to the current working directory). If found, read the `title` attribute from it.
@@ -168,6 +194,7 @@ acli jira workitem search --jql "project = PROJ AND issuetype = IssueType ORDER 
 ```
 
 - Full ADF, mentions, links: reference doc and [Atlassian ADF structure](https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/).
+- **Jira ticket references in ADF must always be hyperlinks**, never plain text keys. Use an inline link mark with `href: https://[SITE].atlassian.net/browse/[KEY]` and display text of the issue key (e.g. `PROJ-123`).
 - Present summary to user; get **yes/no** before create.
 
 ### Phase 3: Implement
@@ -186,7 +213,15 @@ Then `PUT /rest/api/3/issue/{key}` with `components` if needed (reference).
 
 - Assign: `acli jira workitem assign --key "..." --assignee "user@example.com"` (`@me`, `--remove-assignee`, `--jql`, etc.).
 - Transition: `acli jira workitem transition --key "..." --status "Done"` (exact status name).
-- Comment: show draft → explicit approval → `acli jira workitem comment create --key "..." --body "..."` or `--body-file` / `--editor` for ADF.
+- Comment: show draft → explicit approval → always post via REST API with an ADF body (never use `acli jira workitem comment create --body "..."` — acli posts plain text/wiki markup, not rich text):
+  ```bash
+  curl -s -X POST \
+    -u "${ATLASSIAN_USER_EMAIL}:${ATLASSIAN_USER_API_KEY}" \
+    -H "Content-Type: application/json" \
+    "https://YOUR-SITE.atlassian.net/rest/api/3/issue/{key}/comment" \
+    -d '{"body": <ADF doc>}'
+  ```
+  To edit an existing comment, use `PUT /rest/api/3/issue/{key}/comment/{commentId}` with the same ADF body shape.
 - Fields: `acli jira workitem edit --key "..." --summary "..." --description-file ...` or `--from-json` with `"issues": [...]` (no `--key` with `--from-json`). Custom fields, parent: JSON per reference. Components: REST PUT, not acli edit JSON.
 - Links: `acli jira workitem link create --out BLOCKED --in BLOCKER --type "Blocks" --yes` (note: `--in` is the blocker, `--out` is the blocked issue; always verify direction via JSON after creating). See [jira-workitem-fields-and-rest.md](../../references/jira-workitem-fields-and-rest.md) for direction, link types, and when to use links vs the parent field.
 - Web links (external URLs): acli has no command for this. Use `POST /rest/api/3/issue/{key}/remotelink` with body `{"object": {"url": "...", "title": "..."}}`. See reference for upsert via `globalId`, other operations, and permissions.
