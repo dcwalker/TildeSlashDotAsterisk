@@ -37,6 +37,20 @@ At the end of every profile, include a **"What's missing"** note — list only s
 
 ---
 
+## TWG CLI (preferred when available)
+
+The `twg` CLI (Atlassian Teamwork Graph) provides a simpler, auth-aware path for Atlassian lookups. Check once at the start:
+
+```bash
+TWG_AVAILABLE=$(which twg >/dev/null 2>&1 && echo yes || echo no)
+```
+
+When `twg` is available, prefer the `twg` paths described in the steps below. When it is not installed, fall through to the curl/MCP paths as usual.
+
+`twg` reads auth from `~/.config/twg/auth.conf` or `TWG_USER` / `TWG_SITE` env vars. If it is installed but not authenticated, it will error — fall back to the curl path and note the gap.
+
+---
+
 ## Step 1: Resolve identity across platforms
 
 Use the identifier(s) the user provided to find the person in each system. Run all three lookups in parallel.
@@ -45,7 +59,14 @@ Use the identifier(s) the user provided to find the person in each system. Run a
 Use `slack_search_users` with the identifier. Try the full name first; if results are ambiguous, add an email domain or job title qualifier.
 
 ### Atlassian
-Use `lookupJiraAccountId` with `cloudId: "${ATLASSIAN_BASE_URL}"` and the person's name or email as `searchString`. This returns an `accountId`.
+
+**Preferred (when twg is available):**
+```bash
+twg user search "{name or email}" -o json
+```
+Returns `accountId`, `displayName`, and `email`. Use the first match; if results are ambiguous, add an email domain or job title to narrow.
+
+**Fallback:** Use `lookupJiraAccountId` with `cloudId: "${ATLASSIAN_BASE_URL}"` and the person's name or email as `searchString`. This returns an `accountId`.
 
 If you need the cloudId as a UUID (required for GraphQL calls and the Atlassian People profile URL):
 ```bash
@@ -115,6 +136,14 @@ done
 ```
 
 **3. Full reporting line** — walk every level from direct manager to org root:
+
+**Preferred (when twg is available):**
+```bash
+twg user {accountId} --manager -s {site} -o json
+```
+This returns the direct manager's `accountId` and `name`. To walk the full chain, call `--manager` iteratively on each manager's account ID until no further manager is returned. Resolve each to name and title as below.
+
+**Fallback:** use the GraphQL `teamworkGraph_userReportChain` query:
 
 ```bash
 ACCOUNT_ARI="ari:cloud:identity::user/{accountId}"
@@ -223,11 +252,15 @@ Then assemble everything using this format (omit sections with no data):
 - **Start Date:** ... (if available)
 
 ## Reporting Line
+[C-level] — [Title]
+↓ 
+[VP / Director] — [Title]
+↓ 
+[Skip-level] — [Title]
+↓ 
+[Direct Manager] — [Title]
+↓ 
 [Person Name] — [Title]
-↑ [Direct Manager] — [Title]
-↑ [Skip-level] — [Title]
-↑ [VP / Director] — [Title]
-↑ [C-level] — [Title]
 *(from Atlassian reporting chain; level1Manager = direct manager)*
 
 ## Atlassian Teams
