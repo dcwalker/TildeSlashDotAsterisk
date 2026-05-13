@@ -110,5 +110,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "editor.wordWrap": "on",
-  "window.autoDetectColorScheme": false
+  "window.autoDetectColorScheme": false,
+  "datadog.cursor.notification.suppressMcpMigrationMessage": true,
+  "security.promptForLocalFileProtocolHandling": false
 }
