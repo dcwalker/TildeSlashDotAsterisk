@@ -19,6 +19,9 @@ This skill uses the following env vars when available. None are required — the
 | `ATLASSIAN_USER_EMAIL` | Basic auth for Atlassian REST/GraphQL APIs |
 | `ATLASSIAN_USER_API_KEY` | Basic auth for Atlassian REST/GraphQL APIs |
 | `ATLASSIAN_ORG_ID` | Atlassian org ID for the public teams API |
+| `TWG_USER` | TWG CLI — Atlassian account email (alternative to `ATLASSIAN_USER_EMAIL`) |
+| `TWG_SITE` | TWG CLI — default site prefix or domain |
+| `TWG_TOKEN` | TWG CLI — API token |
 
 Define this helper early and use it throughout:
 ```bash
@@ -31,23 +34,21 @@ atl_curl() {
 If the vars aren't set, `curl -sf` fails silently. Fall back to MCP tools for that section and collect the gap for the closing note.
 
 At the end of every profile, include a **"What's missing"** note — list only sections that couldn't be populated and the simplest way to unlock each:
-- Atlassian Teams / Reporting line → set `ATLASSIAN_USER_EMAIL`, `ATLASSIAN_USER_API_KEY`, `ATLASSIAN_ORG_ID`
+- Atlassian Teams / Reporting line → set up TWG CLI or set `ATLASSIAN_USER_EMAIL`, `ATLASSIAN_USER_API_KEY`, `ATLASSIAN_ORG_ID`
 - GitHub teams → `gh auth login`
 - Jira activity → check Atlassian MCP connection
 
 ---
 
-## TWG CLI (preferred when available)
+## TWG CLI (prefer when available)
 
-The `twg` CLI (Atlassian Teamwork Graph) provides a simpler, auth-aware path for Atlassian lookups. Check once at the start:
+The [TWG CLI](https://developer.atlassian.com/cloud/twg-cli/) (Atlassian Teamwork Graph) provides authenticated access to org data including reporting chains and team memberships. Check availability once at the start:
 
 ```bash
-TWG_AVAILABLE=$(which twg >/dev/null 2>&1 && echo yes || echo no)
+TWG_AVAILABLE=$(twg doctor >/dev/null 2>&1 && echo yes || echo no)
 ```
 
-When `twg` is available, prefer the `twg` paths described in the steps below. When it is not installed, fall through to the curl/MCP paths as usual.
-
-`twg` reads auth from `~/.config/twg/auth.conf` or `TWG_USER` / `TWG_SITE` env vars. If it is installed but not authenticated, it will error — fall back to the curl path and note the gap.
+When `TWG_AVAILABLE=yes`, use `twg help` to discover the right subcommands for user search, manager/reporting chain, and team membership queries. The command structure is discoverable at runtime — always use `twg help <topic>` rather than guessing syntax. When `TWG_AVAILABLE=no`, fall through to the curl/MCP paths.
 
 ---
 
@@ -60,13 +61,9 @@ Use `slack_search_users` with the identifier. Try the full name first; if result
 
 ### Atlassian
 
-**Preferred (when twg is available):**
-```bash
-twg user search "{name or email}" -o json
-```
-Returns `accountId`, `displayName`, and `email`. Use the first match; if results are ambiguous, add an email domain or job title to narrow.
+**When TWG is available:** use `twg help` to find the user-search subcommand, then search by name or email. This returns an `accountId` and display name.
 
-**Fallback:** Use `lookupJiraAccountId` with `cloudId: "${ATLASSIAN_BASE_URL}"` and the person's name or email as `searchString`. This returns an `accountId`.
+**Fallback:** use `lookupJiraAccountId` with `cloudId: "${ATLASSIAN_BASE_URL}"` and the person's name or email as `searchString`. This returns an `accountId`.
 
 If you need the cloudId as a UUID (required for GraphQL calls and the Atlassian People profile URL):
 ```bash
@@ -135,13 +132,9 @@ done
 # and check if the person's accountId appears in the member list
 ```
 
-**3. Full reporting line** — walk every level from direct manager to org root:
+**3. Full reporting line** — walk every level from direct manager to org root.
 
-**Preferred (when twg is available):**
-```bash
-twg user {accountId} --manager -s {site} -o json
-```
-This returns the direct manager's `accountId` and `name`. To walk the full chain, call `--manager` iteratively on each manager's account ID until no further manager is returned. Resolve each to name and title as below.
+**When TWG is available:** use `twg help` to find the reporting-chain or manager subcommand for a given `accountId`. TWG handles auth and returns the chain directly.
 
 **Fallback:** use the GraphQL `teamworkGraph_userReportChain` query:
 
