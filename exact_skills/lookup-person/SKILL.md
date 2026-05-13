@@ -1,6 +1,6 @@
 ---
 name: lookup-person
-description: Look up a complete profile for any person by name, email, Slack handle, or GitHub username. Searches Slack (profile, title, department, timezone, manager), Atlassian/Jira (account, active projects, Atlassian team memberships), and GitHub (profile, org team memberships) then assembles a unified dossier. Use this skill whenever someone asks to look up a person, find a coworker's contact info, check who someone's manager is, find what teams or projects someone is on, or get any organizational info about a colleague — even if they don't say "look up" or "profile." Trigger on phrases like "who is X", "find X", "what team is X on", "X's manager", "tell me about X".
+description: Look up a complete profile for any person by name, email, Slack handle, or GitHub username. Searches Slack (profile, title, department, timezone, manager), Atlassian/Jira (account, active projects, team memberships), GitHub (profile, org team memberships), and Backstage (team ownership, Slack channels, Jira projects) then assembles a unified dossier. Use this skill whenever someone asks to look up a person, find a coworker's contact info, check who someone's manager is, find what teams or projects someone is on, or get any organizational info about a colleague — even if they don't say "look up" or "profile." Trigger on phrases like "who is X", "find X", "what team is X on", "X's manager", "tell me about X".
 ---
 
 ## What this skill does
@@ -22,19 +22,31 @@ This skill uses the following env vars when available. None are required — the
 | `TWG_USER` | TWG CLI — Atlassian account email (alternative to `ATLASSIAN_USER_EMAIL`) |
 | `TWG_SITE` | TWG CLI — default site prefix or domain |
 | `TWG_TOKEN` | TWG CLI — API token |
+| `BACKSTAGE_URL` | Backstage app root, e.g. `https://backstage.example.com` — the skill appends `/api/catalog` automatically |
+| `BACKSTAGE_TOKEN` | Optional Bearer token for Backstage (omit if your instance allows unauthenticated access) |
 
-Define this helper early and use it throughout:
+Define these helpers early and use them throughout:
 ```bash
 atl_curl() {
   curl -sf -u "${ATLASSIAN_USER_EMAIL}:${ATLASSIAN_USER_API_KEY}" \
     -H "Accept: application/json" "$@"
 }
+
+backstage_curl() {
+  local args=(-sf -H "Accept: application/json")
+  [ -n "$BACKSTAGE_TOKEN" ] && args+=(-H "Authorization: Bearer ${BACKSTAGE_TOKEN}")
+  curl "${args[@]}" "$@"
+}
+
+# Backstage catalog API base (derived from app root)
+BACKSTAGE_CATALOG="${BACKSTAGE_URL}/api/catalog"
 ```
 
 If the vars aren't set, `curl -sf` fails silently. Fall back to MCP tools for that section and collect the gap for the closing note.
 
 At the end of every profile, include a **"What's missing"** note — list only sections that couldn't be populated and the simplest way to unlock each:
 - Atlassian Teams / Reporting line → set up TWG CLI or set `ATLASSIAN_USER_EMAIL`, `ATLASSIAN_USER_API_KEY`, `ATLASSIAN_ORG_ID`
+- Backstage team enrichment → set `BACKSTAGE_URL` (e.g. `https://backstage.example.com`); add `BACKSTAGE_TOKEN` if your instance requires authentication
 - GitHub teams → `gh auth login`
 - Jira activity → check Atlassian MCP connection
 
@@ -217,6 +229,52 @@ Run in parallel once the username is known:
    ```
    Run org scans concurrently with `&` / `wait` if checking multiple orgs. For very large orgs (hundreds of teams), fall back to the GraphQL filter and note it may be incomplete.
 
+### Backstage — team enrichment
+
+Once you know what team(s) the person is on (from Atlassian, GitHub, or their Slack department field), look each team up in Backstage to get ownership info and metadata. Skip this section if `BACKSTAGE_URL` is not set.
+
+**Find the Group entity.** Team names in Backstage are typically slugified (lowercase, hyphens). Try the direct lookup first, then fall back to a search:
+
+```bash
+# Direct lookup — works when you know the slug
+backstage_curl "${BACKSTAGE_CATALOG}/entities/by-name/group/default/{team-slug}"
+
+# Search if the slug is uncertain — filter by kind=Group and search by name
+backstage_curl "${BACKSTAGE_CATALOG}/entities/by-query?filter=kind=Group" \
+  | python3 -c "
+import json, sys, re
+data = json.load(sys.stdin)
+target = '{team name}'.lower()
+for e in data.get('items', []):
+    name = e.get('metadata', {}).get('name', '')
+    title = e.get('metadata', {}).get('title', '')
+    if target in name.lower() or target in title.lower():
+        print(name, '|', title)
+"
+```
+
+**Extract from the Group entity:**
+- `metadata.annotations` — all key-value pairs. Common ones include Slack channel IDs/names, Jira project keys, GitHub team slugs, and on-call rotation links. Display all annotations that look relevant to the user.
+- `metadata.title` — human-readable team name
+- `spec.profile.email` — team email/alias
+- `spec.type` — e.g. `team`, `squad`, `tribe`, `department`
+- `spec.parent` — parent group in the org hierarchy
+
+**Get what the team owns.** Query for entities whose `ownedBy` relation points to this group:
+
+```bash
+backstage_curl "${BACKSTAGE_CATALOG}/entities/by-query?filter=relations.ownedBy=group:default/{team-slug}&limit=50" \
+  | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for e in data.get('items', []):
+    m = e.get('metadata', {})
+    print(e.get('kind',''), m.get('name',''), e.get('spec',{}).get('type',''))
+"
+```
+
+List the owned components grouped by kind (Component, System, API, Resource). Focus on Components with type `service`, `website`, or `library` — these best represent what the team is responsible for.
+
 ---
 
 ## Step 3: Present the unified profile
@@ -259,6 +317,14 @@ Then assemble everything using this format (omit sections with no data):
 ## Atlassian Teams
 - Team Name
 - Team Name
+
+## Team (Backstage)
+- **Slack:** #channel-name (from annotations)
+- **Jira:** PROJECT-KEY, PROJECT-KEY (from annotations)
+- **Type:** team / squad / tribe
+- **Owns:** ComponentA (service), ComponentB (library), SystemA, ...
+- **[Backstage page](https://backstage.example.com/catalog/default/group/{slug})**
+*(omit this section if BACKSTAGE_URL is not set)*
 
 ## Atlassian / Jira Activity
 - **Account ID:** `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
